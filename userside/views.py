@@ -61,6 +61,7 @@ class RegisterConfirm(APIView):
     def post(self, request):
         otp = request.data['otp']
         email = request.data['email']
+        print(otp)
         try:
             obj = Regotp.objects.values(
                 'secret', 'user_data', 'otp_time').get(email=email)
