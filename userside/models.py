@@ -44,4 +44,10 @@ class Posts(models.Model):
     updatedDate = models.DateTimeField(auto_now=True,null=True)
     is_deleted = models.BooleanField(default= False)
 
+    @property
+    def formatted_uploadDate(self):
+        if self.uploadDate:
+            return self.uploadDate.strftime('%Y-%m-%d %H:%M:%S')
+        return None
+
 

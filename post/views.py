@@ -124,3 +124,16 @@ class CommentView(APIView):
         comments = Comments.objects.filter(postID=id, parent_comment__isnull=True).order_by('-id')
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def delete(self, request, id=None):
+        try:
+            comment = Comments.objects.get(id=id)
+        except Comments.DoesNotExist:
+            return Response({"message": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if the user is the author of the comment or has permission to delete
+        if comment.userID != request.user:
+            return Response({"message": "You do not have permission to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
+
+        comment.delete()
+        return Response({"message": "Comment deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
