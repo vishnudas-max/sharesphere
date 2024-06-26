@@ -88,6 +88,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
 
     async def disconnect(self, code):
+        
+        # notifying the group that the user has gone offline--
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type':'user_offline',
+                'username' : self.scope['user'].username
+            }
+        )
+    
         self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
@@ -98,7 +108,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if text_data:
                 data = json.loads(text_data)
                 message = data.get('message')
-                if message:
+                event_type = data.get('type')
+
+                if message and event_type == 'chat_message':
                     request_user = self.scope['user']
                     room_id = int(self.room_group_name.split('_')[1])
                     print(f"roomid{room_id}")
@@ -119,6 +131,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             "is_read": chat_message.is_read
                         }
                     )
+                elif event_type == 'user_typing':
+                    await self.channel_layer.group_send(
+                            self.room_group_name,
+                            {
+                                'type':'user_typing',
+                                'username':self.scope['user'].username
+                            }
+
+                    )
+
+                elif event_type == 'user_online':
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'user_online',
+                            'username': self.scope['user'].username
+                        }
+                    )
+
+
         except json.JSONDecodeError:
             # Handle the case where text_data is not valid JSON
             pass
@@ -127,6 +159,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             pass
 
     async def chat_message(self, event):
+
         message = event.get('message')
         sender_id = event.get('sender_id')
         sender_username = event.get('sender_username')
@@ -135,6 +168,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print(message, sender_id, sender_username, time, is_read)
         if message:
             await self.send(text_data=json.dumps({
+                "type":"chat_message",
                 "message": message,
                 "sender_id": sender_id,
                 "sender_username": sender_username,
@@ -145,5 +179,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
         else:
             # Handle the missing or invalid 'message' key
             pass
-        
+
+    async def user_typing(self, event):
+        username = event['username']
+
+        await self.send(text_data=json.dumps({
+            'type': 'user_typing',
+            'username': username
+        }))
+
+    async def user_online(self, event):
+        username = event['username']
+
+        await self.send(text_data=json.dumps({
+            'type': 'user_online',
+            'username': username
+        }))
+
+    async def user_offline(self, event):
+        username = event['username']
+
+        await self.send(text_data=json.dumps({
+            'type': 'user_offline',
+            'username': username
+        }))
     # to save message into databaase--
