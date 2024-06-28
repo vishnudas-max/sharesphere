@@ -15,9 +15,10 @@ router.register(r'postlike', PostLikeViewSet)
 
 urlpatterns = [
     path('register/',user.RegisterView.as_view(),name='register'),
+    path('login/',user.LoginView.as_view(),name='register'),
     path('register/confirm/',user.RegisterConfirm.as_view()),
     path('register/resendotp/',user.ResendOtpView.as_view()),
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include(router.urls)),
     path('post/',post.PostCreateUpdate.as_view()),

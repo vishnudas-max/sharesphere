@@ -198,3 +198,11 @@ CHANNEL_LAYERS = {
            
     },
 }
+
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # Default Django backend
+    'userside.backends.PhoneOrUsernameBackend',   # Custom backend for phone or username login
+]
+
+TWO_FACTOR_API_KEY = "72ecf410-3540-11ef-8b60-0200cd936042"

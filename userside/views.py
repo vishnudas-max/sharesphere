@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, GetRandomUsersSerializer,ProfileDetailSeializer
+from .serializers import RegisterSerializer, GetRandomUsersSerializer,ProfileDetailSeializer,get_tokens_for_user
 import pyotp
 import time
 from .models import Regotp, CustomUser
@@ -16,24 +16,32 @@ from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 import random
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+from sms import send_sms
+import string
+import hashlib
+from .utils import send_otp
 # Create your views here.
 
+
+def hash_otp( otp):
+        hashed_otp = hashlib.sha256(otp.encode()).hexdigest()  # Hash the OTP using SHA-256
+        return hashed_otp
 
 class RegisterView(APIView):
 
     def generate_otp(self):
-        secret = pyotp.random_base32()
-        totp = pyotp.TOTP(secret, interval=120, digits=4)
-        otp = totp.now()
-        return otp, secret
+        otp = ''.join(random.choices(string.digits, k=4))
+        return otp
 
     def post(self, request):
+
         data = request.data
         serializer = RegisterSerializer(data=data)
-
         if serializer.is_valid():
-            request.session['userdata'] = data
-            otp, secret = self.generate_otp()
+            otp= self.generate_otp()
+            hashedotp = hash_otp(otp)
             email = data['email']
             message = f"""
                         SHARESPHERE,
@@ -42,11 +50,17 @@ class RegisterView(APIView):
             title = "OTP VERIFICATION"
             # sending mail-
             send_mail_to.delay(message=message, mail=email)
+            try:
+                print('sending')
+                session_id = send_otp(data['phone_number'],otp)
+                return Response({'status': True, 'message': 'OTP sent successfully', 'session_id': session_id}, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
             # saving the otp-
             obj, created = Regotp.objects.update_or_create(
                 email=email,
                 defaults={
-                    'secret': secret,
+                    'secret': hashedotp,
                     'user_data': data
                 }
             )
@@ -58,22 +72,26 @@ class RegisterView(APIView):
 
 class RegisterConfirm(APIView):
 
+
+    
     def post(self, request):
         otp = request.data['otp']
         email = request.data['email']
-        print(otp)
         try:
-            obj = Regotp.objects.values(
-                'secret', 'user_data', 'otp_time').get(email=email)
-            secret = obj['secret']
+            obj = Regotp.objects.values('secret', 'user_data', 'otp_time').get(email=email)
+            originalotp = obj['secret']
             user_data = obj['user_data']
-            totp = pyotp.TOTP(secret, interval=120, digits=4)
-            is_valid = totp.verify(otp)
-            print(is_valid)
         except:
             return Response({'status': False, 'message': 'request time out'}, status=status.HTTP_400_BAD_REQUEST)
-
+        
+        hashedotp =hash_otp(otp)
+        is_valid = originalotp == hashedotp
         if is_valid:
+            current_time = timezone.now()
+            time_difference = current_time - obj['otp_time']
+            if time_difference > timedelta(minutes=1):
+                return Response({'status': False, 'message': 'Otp time out'}, status=status.HTTP_400_BAD_REQUEST)
+            
             serializer = RegisterSerializer(data=user_data)
             if serializer.is_valid():
                 serializer.save()
@@ -82,7 +100,7 @@ class RegisterConfirm(APIView):
         else:
             current_time = timezone.now()
             time_difference = current_time - obj['otp_time']
-            if time_difference > timedelta(minutes=2):
+            if time_difference > timedelta(minutes=1):
                 return Response({'status': False, 'message': 'Otp time out'}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({'status': False, 'message': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
@@ -94,12 +112,12 @@ class ResendOtpView(APIView):
         try:
             email = request.data['email']
             obj = Regotp.objects.get(email=email)
-            secret = obj.secret
         except:
             return Response({'status': False, 'message': 'Request time out'}, status=status.HTTP_400_BAD_REQUEST)
-        totp = pyotp.TOTP(secret, interval=120, digits=4)
-        otp = totp.now()
-        Regotp.objects.filter(email=email).update(otp_time=timezone.now())
+        
+        otp = ''.join(random.choices(string.digits, k=4))
+        hashedotp = hash_otp(otp)
+        Regotp.objects.filter(email=email).update(otp_time=timezone.now(),secret=hashedotp)
         message = f"""
                         SHARESPHERE,
                            Your OTP for Verification {otp}
@@ -166,3 +184,22 @@ class GetUserProfile(APIView):
         
         serializer = ProfileDetailSeializer(user, context={'request': request})
         return Response(serializer.data)
+
+
+class LoginView(APIView):
+    def post(self,request):
+        username = request.data['username']
+        password = request.data['password']
+        # if(not CustomUser.objects.filter(phone_number=username).exists()):
+        #     return Response('invalid PhoneNumber')
+        # print(username)
+        user = authenticate(username=username,password=password)
+        if user is None:
+            return Response('Invalid Username or passsword',status=status.HTTP_400_BAD_REQUEST)
+        
+        # refresh = RefreshToken.for_user(user)
+        tokens = get_tokens_for_user(user)
+        return Response(tokens,status=status.HTTP_200_OK)
+        
+
+        

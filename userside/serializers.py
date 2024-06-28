@@ -4,25 +4,37 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Posts
 from post.serializers import UserDetailsSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
 
-class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
+    # Add custom claims
+    refresh['is_admin'] = user.is_superuser
+    refresh['username'] = user.username
 
-        token['username'] = user.username
-        token['is_admin'] = user.is_superuser
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
+# class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+#     @classmethod
+#     def get_token(cls, user):
+#         token = super().get_token(user)
+
+#         token['username'] = user.username
+#         token['is_admin'] = user.is_superuser
  
-
-        return token
+#         return token
 
 class RegisterSerializer(serializers.Serializer):
-
-
     username = serializers.CharField()
     email = serializers.EmailField()
     password = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    phone_number = serializers.CharField()
 
     def validate(self,data):
         if data['username']:
@@ -31,12 +43,19 @@ class RegisterSerializer(serializers.Serializer):
         if data['email']:
             if CustomUser.objects.filter(email = data['email']).exists():
                 raise serializers.ValidationError('Email already in use !')
-            
+        if data['phone_number']:
+            if CustomUser.objects.filter(phone_number = data['phone_number']).exists():
+                raise serializers.ValidationError('Phone already in use !')
         return data
 
     def create(self,validated_data):
         print(validated_data)
-        user = CustomUser.objects.create(username = validated_data['username'],email=validated_data['email'])
+        user = CustomUser.objects.create(first_name =validated_data['first_name'],
+                                         last_name = validated_data['last_name'],
+                                         username = validated_data['username'],
+                                         email=validated_data['email'],
+                                         phone_number = validated_data['phone_number'])
+        
         user.set_password(validated_data['password'])
         user.save()
 
