@@ -205,9 +205,9 @@ AUTHENTICATION_BACKENDS = [
     'userside.backends.PhoneOrUsernameBackend',   # Custom backend for phone or username login
 ]
 
-TWO_FACTOR_API_KEY = "72ecf410-3540-11ef-8b60-0200cd936042"
+TWO_FACTOR_API_KEY = os.getenv('TWO_FACTOR_API_KEY')
 
-BASE_APP_URL = "http://127.0.0.1:3000"
-BASE_API_URL = "http://127.0.0.1:8000"
-GOOGLE_OAUTH2_CLIENT_ID = "176814671300-ea19db6houulg293uof0cefbj6i0if2h.apps.googleusercontent.com"
-GOOGLE_OAUTH2_CLIENT_SECRET = "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"
+BASE_APP_URL = os.getenv('BASE_APP_URL')
+BASE_API_URL = os.getenv('BASE_API_URL')
+GOOGLE_OAUTH2_CLIENT_ID = os.getenv('GOOGLE_OAUTH2_CLIENT_ID')
+GOOGLE_OAUTH2_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH2_CLIENT_SECRET')
