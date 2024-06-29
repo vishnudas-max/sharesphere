@@ -2,6 +2,8 @@ from django.urls import path,include
 from userside import views as user
 from post import views as post
 from story import views as story
+from googleauth import views as google
+
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -27,5 +29,6 @@ urlpatterns = [
     path('follow/<str:username>',user.FollowAndFollowingView.as_view()),
     path('suggested/users/',user.getRandomUser.as_view()),
     path('user/profile/detailes/<int:id>/',user.GetUserProfile.as_view()),
-    path('user/story/',story.addStoryView.as_view())
+    path('user/story/',story.addStoryView.as_view()),
+    path('auth/login/google/',google.GoogleLoginApi.as_view())
 ]

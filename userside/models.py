@@ -11,12 +11,18 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=150, null=True, blank=True)
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=10,unique=True,null=False, validators=[
-        RegexValidator(
-          regex=r'^\d{10}$',
-          message="Phone number must be exactly 10 digits and contain no letters or special characters."
+    phone_number = models.CharField(
+        max_length=10,
+        unique=True,
+        null=True,
+        blank=True,
+        validators=[
+            RegexValidator(
+                regex=r'^\d{10}$',
+                message="Phone number must be exactly 10 digits and contain no letters or special characters."
+            )
+        ]
     )
-    ])
     profile_pic = models.ImageField(
     upload_to='profilepics/', blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
@@ -46,6 +52,14 @@ class Regotp(models.Model):
     def save(self, *args, **kwargs):
         self.otp_time = timezone.now()
         super(Regotp, self).save(*args, **kwargs)
+class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                name='unique_nonnull_field',
+                fields=['unique_field'],
+                condition=models.Q(unique_field__isnull=False),
+            )
+        ]
 
 
 class Posts(models.Model):

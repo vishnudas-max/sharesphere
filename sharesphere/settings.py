@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-k0n3f_5wc*x=_3p&$nwr0(1l+05^tqciori575z7fkjxvgvdg6'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -205,4 +205,9 @@ AUTHENTICATION_BACKENDS = [
     'userside.backends.PhoneOrUsernameBackend',   # Custom backend for phone or username login
 ]
 
-TWO_FACTOR_API_KEY = "72ecf410-3540-11ef-8b60-0200cd936042"
+TWO_FACTOR_API_KEY = os.getenv('TWO_FACTOR_API_KEY')
+
+BASE_APP_URL = os.getenv('BASE_APP_URL')
+BASE_API_URL = os.getenv('BASE_API_URL')
+GOOGLE_OAUTH2_CLIENT_ID = os.getenv('GOOGLE_OAUTH2_CLIENT_ID')
+GOOGLE_OAUTH2_CLIENT_SECRET = os.getenv('GOOGLE_OAUTH2_CLIENT_SECRET')
