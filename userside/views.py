@@ -7,7 +7,7 @@ import pyotp
 import time
 from .models import Regotp, CustomUser
 import time
-from .tasks import send_mail_to
+from .tasks import send_mail_to,send_sms_to
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.permissions import IsAuthenticated
@@ -18,10 +18,9 @@ from django.db.models import Q
 import random
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from sms import send_sms
 import string
 import hashlib
-from .utils import send_otp
+
 # Create your views here.
 
 
@@ -43,6 +42,7 @@ class RegisterView(APIView):
             otp= self.generate_otp()
             hashedotp = hash_otp(otp)
             email = data['email']
+            phone_number = data['phone_number']
             message = f"""
                         SHARESPHERE,
                            Your OTP for Verification {otp}
@@ -50,13 +50,7 @@ class RegisterView(APIView):
             title = "OTP VERIFICATION"
             # sending mail-
             send_mail_to.delay(message=message, mail=email)
-            try:
-                print('sending')
-                session_id = send_otp(data['phone_number'],otp)
-                return Response({'status': True, 'message': 'OTP sent successfully', 'session_id': session_id}, status=status.HTTP_200_OK)
-            except Exception as e:
-                return Response({'status': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-            # saving the otp-
+            send_sms_to.delay(phone_number,otp)
             obj, created = Regotp.objects.update_or_create(
                 email=email,
                 defaults={
@@ -64,16 +58,13 @@ class RegisterView(APIView):
                     'user_data': data
                 }
             )
+            return Response({'status': True, 'message': 'OTP sent', 'email': email,'phone_number':phone_number}, status=status.HTTP_200_OK)
 
-            return Response({'status': True, 'message': 'OTP sent', 'email': email}, status=status.HTTP_200_OK)
-
+            # saving the otp-
         return Response({'status': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RegisterConfirm(APIView):
-
-
-    
     def post(self, request):
         otp = request.data['otp']
         email = request.data['email']
@@ -111,6 +102,7 @@ class ResendOtpView(APIView):
     def post(self, request):
         try:
             email = request.data['email']
+            phone_number = request.data['phone_number']
             obj = Regotp.objects.get(email=email)
         except:
             return Response({'status': False, 'message': 'Request time out'}, status=status.HTTP_400_BAD_REQUEST)
@@ -125,6 +117,7 @@ class ResendOtpView(APIView):
         title = "OTP VERIFICATION"
         # sending mail-
         send_mail_to.delay(message=message, mail=email)
+        send_sms_to.delay(phone_number,otp)
 
         return Response({'status': True, 'message': 'OTP send', 'email': email}, status=status.HTTP_200_OK)
 
