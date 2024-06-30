@@ -24,20 +24,21 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ]
     )
     profile_pic = models.ImageField(
-    upload_to='profilepics/', blank=True, null=True)
+        upload_to='profilepics/', blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     created_date = models.DateTimeField(default=timezone.now)
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
-    following = models.ManyToManyField( 'self', symmetrical=False, related_name='user_followers', blank=True) 
-    followers = models.ManyToManyField(  'self', symmetrical=False, related_name='user_followwing', blank=True)
-      
+    following = models.ManyToManyField(
+        'self', symmetrical=False, related_name='user_followers', blank=True)
+    followers = models.ManyToManyField(
+        'self', symmetrical=False, related_name='user_followwing', blank=True)
 
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'phone_number'
-    REQUIRED_FIELDS = ['username','email', 'password']
+    REQUIRED_FIELDS = ['username', 'email', 'password']
 
     def __str__(self):
         return self.username
@@ -52,14 +53,16 @@ class Regotp(models.Model):
     def save(self, *args, **kwargs):
         self.otp_time = timezone.now()
         super(Regotp, self).save(*args, **kwargs)
+
+
 class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                name='unique_nonnull_field',
-                fields=['unique_field'],
-                condition=models.Q(unique_field__isnull=False),
-            )
-        ]
+    constraints = [
+        models.UniqueConstraint(
+            name='unique_nonnull_field',
+            fields=['unique_field'],
+            condition=models.Q(unique_field__isnull=False),
+        )
+    ]
 
 
 class Posts(models.Model):
@@ -76,3 +79,11 @@ class Posts(models.Model):
         if self.uploadDate:
             return self.uploadDate.strftime('%Y-%m-%d %H:%M:%S')
         return None
+
+
+class UserReports(models.Model):
+    reported_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reported_users')
+    reported_user = models.ForeignKey( CustomUser, on_delete=models.CASCADE, related_name='allreports')
+    report_reason = models.TextField(null=False)
+    action_took = models.BooleanField(default=False)
+    reported_time = models.DateTimeField(auto_now_add=True)

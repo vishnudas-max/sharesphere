@@ -12,5 +12,6 @@ urlpatterns = [
     path('postperday/',views.PostCountByDay.as_view()),
     path('postuser/overview/',views.getTotalDetailes.as_view()),
     path('', include(router.urls)),
+    path('user/reports/<int:id>/',views.GerUserReports.as_view())
    
 ]

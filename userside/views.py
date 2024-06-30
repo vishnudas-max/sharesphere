@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, GetRandomUsersSerializer,ProfileDetailSeializer,get_tokens_for_user
+from .serializers import RegisterSerializer, GetRandomUsersSerializer,ProfileDetailSeializer,get_tokens_for_user,UserReportSerializer
 import pyotp
 import time
 from .models import Regotp, CustomUser
@@ -195,4 +195,16 @@ class LoginView(APIView):
         return Response(tokens,status=status.HTTP_200_OK)
         
 
-        
+class Reportuser(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    def post(self,request):
+        data = request.data.copy()
+        data['reported_by'] = request.user.id
+        print(data)
+        serializer = UserReportSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response('Report Succes',status=status.HTTP_200_OK)
+        return  Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)

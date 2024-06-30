@@ -30,5 +30,6 @@ urlpatterns = [
     path('suggested/users/',user.getRandomUser.as_view()),
     path('user/profile/detailes/<int:id>/',user.GetUserProfile.as_view()),
     path('user/story/',story.addStoryView.as_view()),
-    path('auth/login/google/',google.GoogleLoginApi.as_view())
+    path('auth/login/google/',google.GoogleLoginApi.as_view()),
+    path('report/',user.Reportuser.as_view())
 ]

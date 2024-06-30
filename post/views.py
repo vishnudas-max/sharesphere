@@ -37,7 +37,7 @@ class PostsViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = self.queryset
-        query_set = queryset.filter(is_deleted=False).annotate(likes_count = Count('postlikes')) #annotating counnt of totallikes ussing reverse forignkey relation
+        query_set = queryset.filter(is_deleted=False,userID__is_active=True).annotate(likes_count = Count('postlikes')) #annotating counnt of totallikes ussing reverse forignkey relation
         return query_set
     
     # deleting post-

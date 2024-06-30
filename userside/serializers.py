@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import CustomUser
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Posts
+from .models import Posts,UserReports
 from post.serializers import UserDetailsSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -129,3 +129,8 @@ class ProfileDetailSeializer(serializers.ModelSerializer):
         posts= obj.userPosts.filter(is_deleted=False)
         return PostSerializer(posts,many = True).data
     
+
+class UserReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserReports
+        fields = ['reported_by','reported_user','report_reason']
