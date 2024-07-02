@@ -21,3 +21,12 @@ class Comments(models.Model):
         return self.comment[:20]
     
 
+class PostReports(models.Model):
+    reported_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reported_posts')
+    reported_post = models.ForeignKey( Posts, on_delete=models.CASCADE, related_name='all_post_reports')
+    report_reason = models.TextField(null=False)
+    action_took = models.BooleanField(default=False)
+    reported_time = models.DateTimeField(auto_now_add=True)
+    
+
+

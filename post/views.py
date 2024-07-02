@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import postCreateSeializer,PostsSerializer,PostLikeserializer,CommentSerializer,CommentCreateSerializer
 from userside.models import Posts,CustomUser
 from rest_framework.views import APIView
-from .models import PostLike,Comments
+from .models import PostLike,Comments,PostReports
 from django.db.models import Count
 
 # Create your views here.
@@ -137,3 +137,24 @@ class CommentView(APIView):
 
         comment.delete()
         return Response({"message": "Comment deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+    
+
+# reporting post---
+class ReportPost(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self,request):
+        reported_by = request.user
+        report_reason = request.data['report_reason']
+        reported_post = request.data['reported_post']
+
+        try:
+            post = Posts.objects.get(id=reported_post)
+            report = PostReports.objects.create(reported_by=reported_by,
+                                                reported_post=post,
+                                                report_reason = report_reason)
+            return Response('Post Reported',status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response('Something Wend wrong',status=status.HTTP_400_BAD_REQUEST)

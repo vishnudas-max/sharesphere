@@ -183,14 +183,11 @@ class LoginView(APIView):
     def post(self,request):
         username = request.data['username']
         password = request.data['password']
-        # if(not CustomUser.objects.filter(phone_number=username).exists()):
-        #     return Response('invalid PhoneNumber')
-        # print(username)
         user = authenticate(username=username,password=password)
         if user is None:
             return Response('Invalid Username or passsword',status=status.HTTP_400_BAD_REQUEST)
-        
-        # refresh = RefreshToken.for_user(user)
+        if user.is_active == False:
+            return Response('You have been blocked to access Sharesphere',status=status.HTTP_400_BAD_REQUEST)
         tokens = get_tokens_for_user(user)
         return Response(tokens,status=status.HTTP_200_OK)
         

@@ -9,9 +9,10 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Count, F
 from django.db.models.functions import ExtractWeekDay
 from rest_framework import viewsets
-from .serializers import AdminUserSerializer,GetReportSerializer
+from .serializers import AdminUserSerializer,GetReportSerializer,AdminPostSeializer
 from rest_framework.pagination import PageNumberPagination
 from .task import send_mail_to
+from post.models import PostReports
 # Create your views here.
 
 
@@ -135,5 +136,49 @@ class GerUserReports(APIView):
     permission_classes =[IsAuthenticated]
     def get(self,request,id):
         reports = UserReports.objects.filter(reported_user = id)
+        serializer = GetReportSerializer(reports,many=True)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+
+
+# view to get posts in admin side--
+class GetPosts(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes =[IsAuthenticated]
+    queryset = Posts.objects.all()
+    serializer_class = AdminPostSeializer
+    pagination_class = StandardResultsSetPagination
+
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        show_deleted = self.request.query_params.get('show_deleted', 'false').lower() in ['true', '1', 'yes']
+
+        if show_deleted == True:
+            queryset = queryset.filter(is_deleted = True)
+        else:
+            queryset = queryset.filter(is_deleted = False)
+
+        queryset = queryset.annotate(
+            report_count=Count('all_post_reports')
+        )
+
+        queryset = queryset.order_by('-report_count')
+        return queryset
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_deleted = True
+        instance.save()
+        reports = instance.all_post_reports.all()
+        for report in reports:
+            report.action_took = True
+            report.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class GetPostReprts(APIView):    
+    authentication_classes = [JWTAuthentication]
+    permission_classes =[IsAuthenticated]
+    def get(self,request,id):
+        reports = PostReports.objects.filter(reported_post= id)
         serializer = GetReportSerializer(reports,many=True)
         return Response(serializer.data,status=status.HTTP_200_OK)
