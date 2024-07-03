@@ -10,6 +10,7 @@ class Story(models.Model):
     userID = models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name='userStories')
     upload_time =models.DateTimeField(auto_now_add=True)
     is_deleted = models.BooleanField(default=False)
+    viewed_users = models.ManyToManyField(CustomUser,related_name='viewed_stories')
 
     def __str__(self):
         return f'Story by {self.user.username}'

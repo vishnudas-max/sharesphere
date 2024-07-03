@@ -9,6 +9,7 @@ from .serializers import StorySerializer, GetStoriesSerializer
 from rest_framework import status
 from .tasks import delete_story
 from django.db.models import Q,Count
+from django.shortcuts import get_object_or_404
 # Create your views here.
 
 
@@ -43,3 +44,15 @@ class addStoryView(APIView):
 
         serializer = GetStoriesSerializer(all_users, many=True)
         return Response(serializer.data)
+
+
+class AddViewers(APIView):
+    def post(self,request,storyID):
+        user = request.user
+        story = get_object_or_404(Story, id=storyID)
+        story.viewed_users.add(user)
+        story.save()
+        return Response('Added to Viewed Users', status=status.HTTP_200_OK)
+    
+    def handle_exception(self, exc):
+        return Response(str(exc), status=status.HTTP_400_BAD_REQUEST)
