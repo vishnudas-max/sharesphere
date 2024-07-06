@@ -4,7 +4,9 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Posts,UserReports
 from post.serializers import UserDetailsSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken ,TokenError
+
+
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -18,15 +20,16 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 
-# class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-#     @classmethod
-#     def get_token(cls, user):
-#         token = super().get_token(user)
+# # class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+# #     @classmethod
+# #     def get_token(cls, user):
+# #         token = super().get_token(user)
 
-#         token['username'] = user.username
-#         token['is_admin'] = user.is_superuser
+# #         token['username'] = user.username
+# #         token['is_admin'] = user.is_superuser
  
-#         return token
+# #         return token
+
 
 class RegisterSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -134,3 +137,29 @@ class UserReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserReports
         fields = ['reported_by','reported_user','report_reason']
+
+
+
+
+class CustomTokenRefreshSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+    def validate(self, attrs):
+        refresh = attrs['refresh']
+
+        try:
+            # Decode the refresh token
+            refresh_token = RefreshToken(refresh)
+            data = {'refresh': str(refresh), 'access': str(refresh_token.access_token)}
+            user_id = refresh_token.payload.get('user_id')
+            
+            # Fetch user from database
+            user = CustomUser.objects.get(id=user_id)
+
+            if not user.is_active:
+                raise serializers.ValidationError('User account is not active.')
+
+            return data
+
+        except TokenError as e:
+            raise serializers.ValidationError(str(e))

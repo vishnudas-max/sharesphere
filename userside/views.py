@@ -2,12 +2,12 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, GetRandomUsersSerializer,ProfileDetailSeializer,get_tokens_for_user,UserReportSerializer
+from .serializers import RegisterSerializer, GetRandomUsersSerializer, ProfileDetailSeializer, get_tokens_for_user, UserReportSerializer, CustomTokenRefreshSerializer
 import pyotp
 import time
 from .models import Regotp, CustomUser
 import time
-from .tasks import send_mail_to,send_sms_to
+from .tasks import send_mail_to, send_sms_to
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.permissions import IsAuthenticated
@@ -20,13 +20,17 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 import string
 import hashlib
+from rest_framework_simplejwt.views import TokenRefreshView
+from .signals import user_followed, user_unfollowed
 
 # Create your views here.
 
 
-def hash_otp( otp):
-        hashed_otp = hashlib.sha256(otp.encode()).hexdigest()  # Hash the OTP using SHA-256
-        return hashed_otp
+def hash_otp(otp):
+    # Hash the OTP using SHA-256
+    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
+    return hashed_otp
+
 
 class RegisterView(APIView):
 
@@ -39,7 +43,7 @@ class RegisterView(APIView):
         data = request.data
         serializer = RegisterSerializer(data=data)
         if serializer.is_valid():
-            otp= self.generate_otp()
+            otp = self.generate_otp()
             hashedotp = hash_otp(otp)
             email = data['email']
             phone_number = data['phone_number']
@@ -50,7 +54,7 @@ class RegisterView(APIView):
             title = "OTP VERIFICATION"
             # sending mail-
             send_mail_to.delay(message=message, mail=email)
-            send_sms_to.delay(phone_number,otp)
+            send_sms_to.delay(phone_number, otp)
             obj, created = Regotp.objects.update_or_create(
                 email=email,
                 defaults={
@@ -58,7 +62,7 @@ class RegisterView(APIView):
                     'user_data': data
                 }
             )
-            return Response({'status': True, 'message': 'OTP sent', 'email': email,'phone_number':phone_number}, status=status.HTTP_200_OK)
+            return Response({'status': True, 'message': 'OTP sent', 'email': email, 'phone_number': phone_number}, status=status.HTTP_200_OK)
 
             # saving the otp-
         return Response({'status': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -69,20 +73,21 @@ class RegisterConfirm(APIView):
         otp = request.data['otp']
         email = request.data['email']
         try:
-            obj = Regotp.objects.values('secret', 'user_data', 'otp_time').get(email=email)
+            obj = Regotp.objects.values(
+                'secret', 'user_data', 'otp_time').get(email=email)
             originalotp = obj['secret']
             user_data = obj['user_data']
         except:
             return Response({'status': False, 'message': 'request time out'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        hashedotp =hash_otp(otp)
+
+        hashedotp = hash_otp(otp)
         is_valid = originalotp == hashedotp
         if is_valid:
             current_time = timezone.now()
             time_difference = current_time - obj['otp_time']
             if time_difference > timedelta(minutes=1):
                 return Response({'status': False, 'message': 'Otp time out'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
             serializer = RegisterSerializer(data=user_data)
             if serializer.is_valid():
                 serializer.save()
@@ -106,10 +111,11 @@ class ResendOtpView(APIView):
             obj = Regotp.objects.get(email=email)
         except:
             return Response({'status': False, 'message': 'Request time out'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         otp = ''.join(random.choices(string.digits, k=4))
         hashedotp = hash_otp(otp)
-        Regotp.objects.filter(email=email).update(otp_time=timezone.now(),secret=hashedotp)
+        Regotp.objects.filter(email=email).update(
+            otp_time=timezone.now(), secret=hashedotp)
         message = f"""
                         SHARESPHERE,
                            Your OTP for Verification {otp}
@@ -117,7 +123,7 @@ class ResendOtpView(APIView):
         title = "OTP VERIFICATION"
         # sending mail-
         send_mail_to.delay(message=message, mail=email)
-        send_sms_to.delay(phone_number,otp)
+        send_sms_to.delay(phone_number, otp)
 
         return Response({'status': True, 'message': 'OTP send', 'email': email}, status=status.HTTP_200_OK)
 
@@ -138,10 +144,13 @@ class FollowAndFollowingView(APIView):
             user.following.remove(user_to_follow)
             user_to_follow.followers.remove(user)
             following_Status = False
+            print('follwoing')
+            user_unfollowed.send(sender=self.__class__, follower=user, followed=user_to_follow)
         else:
             user.following.add(user_to_follow)
             user_to_follow.followers.add(user)
             following_Status = True
+            user_followed.send(sender=self.__class__, follower=user, followed=user_to_follow)
 
         return Response({'following_Status': following_Status}, status=status.HTTP_200_OK)
 
@@ -154,13 +163,17 @@ class FollowAndFollowingView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 # view for getting radom users--
+
+
 class getRandomUser(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
-    def get(self,request):
-        users = CustomUser.objects.filter(Q(is_superuser=False) & Q(is_active=True)).exclude(username=request.user.username).order_by('?')[:5]
-        serializer = GetRandomUsersSerializer(users, many=True, context={'request': request})
+    def get(self, request):
+        users = CustomUser.objects.filter(Q(is_superuser=False) & Q(
+            is_active=True)).exclude(username=request.user.username).order_by('?')[:5]
+        serializer = GetRandomUsersSerializer(
+            users, many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -169,39 +182,67 @@ class GetUserProfile(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
-    def get(self,request,id):
+    def get(self, request, id):
         try:
             user = CustomUser.objects.get(id=id)
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
-        
+
         serializer = ProfileDetailSeializer(user, context={'request': request})
         return Response(serializer.data)
 
 
 class LoginView(APIView):
-    def post(self,request):
+    def post(self, request):
         username = request.data['username']
         password = request.data['password']
-        user = authenticate(username=username,password=password)
+        user = authenticate(username=username, password=password)
         if user is None:
-            return Response('Invalid Username or passsword',status=status.HTTP_400_BAD_REQUEST)
+            return Response('Invalid Username or passsword', status=status.HTTP_400_BAD_REQUEST)
         if user.is_active == False:
-            return Response('You have been blocked to access Sharesphere',status=status.HTTP_400_BAD_REQUEST)
+            return Response('You have been blocked to access Sharesphere', status=status.HTTP_400_BAD_REQUEST)
         tokens = get_tokens_for_user(user)
-        return Response(tokens,status=status.HTTP_200_OK)
-        
+        return Response(tokens, status=status.HTTP_200_OK)
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+   def post(self, request, *args, **kwargs):
+        try:
+            refresh = request.data['refresh']
+        except KeyError:
+            return Response({'error': 'Refresh token not provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Decode the refresh token
+            refresh_token = RefreshToken(refresh)
+            user_id = refresh_token.payload.get('user_id')
+
+            # Fetch user from database
+            user = CustomUser.objects.get(id=user_id)
+
+            # Check if user is active
+            if not user.is_active:
+                return Response({'error': 'User account is not active.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Generate new access token
+            access_token = refresh_token.access_token
+
+            return Response({'access': str(access_token)}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class Reportuser(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
-    
-    def post(self,request):
+
+    def post(self, request):
         data = request.data.copy()
         data['reported_by'] = request.user.id
         print(data)
         serializer = UserReportSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response('Report Succes',status=status.HTTP_200_OK)
-        return  Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+            return Response('Report Succes', status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
