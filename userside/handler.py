@@ -5,7 +5,6 @@ from .signals import user_followed,user_unfollowed
 def send_follow_notification(sender,follower,followed, **kwargs):
     channel_layer = get_channel_layer()
     message = f"{follower.username} is following you"
-    print(message)
     async_to_sync(channel_layer.group_send)(
         f"follow_{followed.id}",
         {

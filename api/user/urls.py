@@ -3,6 +3,7 @@ from userside import views as user
 from post import views as post
 from story import views as story
 from googleauth import views as google
+from notification import views as notification
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -33,5 +34,6 @@ urlpatterns = [
     path('auth/login/google/',google.GoogleLoginApi.as_view()),
     path('report/',user.Reportuser.as_view()),
     path('report/post/',post.ReportPost.as_view()),
-    path('add/user/tostory/view/<int:storyID>/',story.AddViewers.as_view())
+    path('add/user/tostory/view/<int:storyID>/',story.AddViewers.as_view()),
+    path('user/notifications/',notification.UserNotificationsView.as_view())
 ]

@@ -7,7 +7,7 @@ import pyotp
 import time
 from .models import Regotp, CustomUser
 import time
-from .tasks import send_mail_to, send_sms_to
+from .tasks import send_mail_to, send_sms_to ,send_follow_notification
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.permissions import IsAuthenticated
@@ -22,6 +22,7 @@ import string
 import hashlib
 from rest_framework_simplejwt.views import TokenRefreshView
 from .signals import user_followed, user_unfollowed
+
 
 # Create your views here.
 
@@ -151,6 +152,8 @@ class FollowAndFollowingView(APIView):
             user_to_follow.followers.add(user)
             following_Status = True
             user_followed.send(sender=self.__class__, follower=user, followed=user_to_follow)
+            send_follow_notification.delay(follower_id=user.id, followed_id=user_to_follow.id)
+            # follow_notification.send(sender=self.__class__,follower=user,followed=user_to_follow)
 
         return Response({'following_Status': following_Status}, status=status.HTTP_200_OK)
 

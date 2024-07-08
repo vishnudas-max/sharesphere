@@ -2,6 +2,9 @@ from celery import shared_task
 from django.core.mail import send_mail
 import requests
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
+from notification.signals import user_followed
+from .models import CustomUser,Posts
 
 
 apikey = settings.TWO_FACTOR_API_KEY
@@ -32,3 +35,17 @@ def send_sms_to(self,phone_number,otp):
         return "done"
     except:
         return "failed"
+    
+
+
+
+@shared_task(bind=True)
+def send_follow_notification(self, follower_id, followed_id):
+    try:
+        follower = CustomUser.objects.get(id=follower_id)
+        followed = CustomUser.objects.get(id=followed_id)
+    except ObjectDoesNotExist as e:
+        return str(e)
+    user_followed.send(sender=self.__class__, follower=follower, followed=followed)
+    return "FOLLOW notification sent"
+
