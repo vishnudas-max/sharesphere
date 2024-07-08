@@ -68,9 +68,10 @@ class CommentCreateSerializer(serializers.ModelSerializer):
 class ReplySerializer(serializers.ModelSerializer):
     userID = UserDetailsSerializer(read_only = True)
     time_ago = serializers.SerializerMethodField()
+    reply_to = serializers.SerializerMethodField(read_only = True)
     class Meta:
         model = Comments
-        fields = ['id','userID','postID','comment','comment_time','time_ago']
+        fields = ['id','userID','postID','comment','comment_time','time_ago','reply_to']
 
     def get_time_ago(self, obj):
         now = timezone.now()
@@ -84,7 +85,12 @@ class ReplySerializer(serializers.ModelSerializer):
             return f"{diff.seconds // 60} minutes ago"
         else:
             return f"{diff.seconds} seconds ago"
-
+    
+    def get_reply_to(self,obj):
+        if obj.parent_comment:
+            return obj.parent_comment.userID.username
+        return None
+    
 # serializers for getting comments with replies--
 class CommentSerializer(serializers.ModelSerializer):
     userID = UserDetailsSerializer(read_only =True)

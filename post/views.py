@@ -147,6 +147,26 @@ class CommentView(APIView):
         comment.delete()
         return Response({"message": "Comment deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
     
+    def patch(self, request, id=None):
+        try:
+            comment = Comments.objects.get(id=id)
+        except Comments.DoesNotExist:
+            return Response({"message": "Comment not found."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if the user is the author of the comment
+        if comment.userID != request.user:
+            return Response({"message": "You do not have permission to edit this comment."}, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+        serializer = CommentCreateSerializer(comment, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
 
 # reporting post---
 class ReportPost(APIView):
