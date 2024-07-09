@@ -48,7 +48,7 @@ class PostsSerializer(serializers.ModelSerializer):
 class postCreateSeializer(serializers.ModelSerializer):
     class Meta:
         model = Posts
-        fields = ['userID','caption','contend']
+        fields = ['userID','caption','contend','id']
 
 
 # serializer for getting user liked posts--
