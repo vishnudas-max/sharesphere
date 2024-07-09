@@ -92,13 +92,13 @@ class PostSerializer(serializers.ModelSerializer):
 
 # serializer for getting user profile detailes--
 class ProfileDetailSeializer(serializers.ModelSerializer):
-    post_count = serializers.SerializerMethodField()
-    followers_count = serializers.SerializerMethodField()
-    following_count = serializers.SerializerMethodField()
-    posts = serializers.SerializerMethodField()
-    is_following = serializers.SerializerMethodField()
-    following = serializers.SerializerMethodField()
-    followers = serializers.SerializerMethodField()
+    post_count = serializers.SerializerMethodField(read_only=True)
+    followers_count = serializers.SerializerMethodField(read_only=True)
+    following_count = serializers.SerializerMethodField(read_only=True)
+    posts = serializers.SerializerMethodField(read_only=True)
+    is_following = serializers.SerializerMethodField(read_only=True)
+    following = serializers.SerializerMethodField(read_only=True)
+    followers = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = CustomUser

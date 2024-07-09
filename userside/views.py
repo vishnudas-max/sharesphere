@@ -193,6 +193,19 @@ class GetUserProfile(APIView):
 
         serializer = ProfileDetailSeializer(user, context={'request': request})
         return Response(serializer.data)
+    
+    def patch(self, request, id):
+        try:
+            user = CustomUser.objects.get(id=id)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        data = request.data
+        serializer = ProfileDetailSeializer(user, data=data, partial=True, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LoginView(APIView):
