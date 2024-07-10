@@ -27,19 +27,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def get_user(self, user_id):
         return CustomUser.objects.get(id=user_id)
 
-    @database_sync_to_async
-    def get_all_messages(self, roomID):
-        chats = Chat.objects.filter(room=roomID).order_by('message_time')
-        return [
-            {
-                "message": chat.message,
-                "sender_id": chat.sender.id,
-                "sender_username": chat.sender.username,
-                "time": chat.formatted_message_time,
-                "is_read": chat.is_read
-            }
-            for chat in chats
-        ]
+    # @database_sync_to_async
+    # def get_all_messages(self, roomID):
+    #     chats = Chat.objects.filter(room=roomID).order_by('message_time')
+    #     return [
+    #         {
+    #             "message": chat.message,
+    #             "sender_id": chat.sender.id,
+    #             "sender_username": chat.sender.username,
+    #             "time": chat.formatted_message_time,
+    #             "is_read": chat.is_read
+    #         }
+    #         for chat in chats
+    #     ]
 
     # to check if room exists else create room---
     @database_sync_to_async
@@ -52,52 +52,51 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return room
 
     async def connect(self):
-            request_user = self.scope['user']
+        request_user = self.scope['user']
 
-            # Ensure user is authenticated
-            if not request_user or request_user.is_anonymous:
-                await self.close()
-            else:
-                # Get the ID of the user to chat with from the URL
-                chat_with_user_id = self.scope['url_route']['kwargs']['id']
+        # Ensure user is authenticated
+        if not request_user or request_user.is_anonymous:
+            await self.close()
+        else:
+            # Get the ID of the user to chat with from the URL
+            chat_with_user_id = self.scope['url_route']['kwargs']['id']
 
-                # Fetch the chat_with_user object asynchronously
-                chat_with_user = await self.get_user(chat_with_user_id)
+            # Fetch the chat_with_user object asynchronously
+            chat_with_user = await self.get_user(chat_with_user_id)
 
-                # Create a room name based on user IDs
-                room = await self.get_or_create_room(request_user, chat_with_user)
+            # Create a room name based on user IDs
+            room = await self.get_or_create_room(request_user, chat_with_user)
 
-                self.room_group_name = f"chat_{room.id}"
+            self.room_group_name = f"chat_{room.id}"
 
-                print(self.room_group_name)
+            print(self.room_group_name)
 
-                # Add the user to the channel group
-                await self.channel_layer.group_add(
-                    self.room_group_name,
-                    self.channel_name
-                )
+            # Add the user to the channel group
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
 
-                # Accept the WebSocket connection
-                await self.accept()
+            # Accept the WebSocket connection
+            await self.accept()
 
-                # Fetch all previous messages and send them to the client
-                messages = await self.get_all_messages(room.id)
-                await self.send(text_data=json.dumps({
-                        "type": "chat_history",
-                        "messages": messages
-                }))
+            self.roomID = room.id
+            await self.send(text_data=json.dumps({
+                "type": "send_room_id",
+                "roomID": self.roomID
+            }))
 
     async def disconnect(self, code):
-        
+
         # notifying the group that the user has gone offline--
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                'type':'user_offline',
-                'username' : self.scope['user'].username
+                'type': 'user_offline',
+                'username': self.scope['user'].username
             }
         )
-    
+
         self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
@@ -117,8 +116,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                     room = await self.get_room(room_id)
 
-                    chat_message = await self.save_chat_message(room,request_user,message)
-                    print('message saved',chat_message)
+                    chat_message = await self.save_chat_message(room, request_user, message)
+                    print('message saved', chat_message)
 
                     await self.channel_layer.group_send(
                         self.room_group_name,
@@ -133,11 +132,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     )
                 elif event_type == 'user_typing':
                     await self.channel_layer.group_send(
-                            self.room_group_name,
-                            {
-                                'type':'user_typing',
-                                'username':self.scope['user'].username
-                            }
+                        self.room_group_name,
+                        {
+                            'type': 'user_typing',
+                            'username': self.scope['user'].username
+                        }
 
                     )
 
@@ -149,7 +148,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             'username': self.scope['user'].username
                         }
                     )
-
 
         except json.JSONDecodeError:
             # Handle the case where text_data is not valid JSON
@@ -168,7 +166,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print(message, sender_id, sender_username, time, is_read)
         if message:
             await self.send(text_data=json.dumps({
-                "type":"chat_message",
+                "type": "chat_message",
                 "message": message,
                 "sender_id": sender_id,
                 "sender_username": sender_username,
@@ -203,4 +201,52 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'type': 'user_offline',
             'username': username
         }))
+
     # to save message into databaase--
+
+
+class CallConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.room_name = 'videocall'
+        self.room_group_name = f'call_{self.room_name}'
+
+        # Join room group
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
+
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        # Leave room group
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        roomID = data['roomID']
+        targetUser = data['targetUser']
+        print(data)
+        # Send message to room group
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'call_message',
+                'roomID': roomID,
+                'targetUser': targetUser
+            }
+        )
+
+    async def call_message(self, event):
+        roomID = event['roomID']
+        targetuser = event['targetUser']
+
+        # Send message to WebSocket
+        await self.send(text_data=json.dumps({
+            'type': 'call_message',
+            'roomID': roomID,
+            'targetUser': targetuser
+        }))

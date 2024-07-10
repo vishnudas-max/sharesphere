@@ -4,6 +4,7 @@ from post import views as post
 from story import views as story
 from googleauth import views as google
 from notification import views as notification
+from chat import views as chat
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -35,5 +36,6 @@ urlpatterns = [
     path('report/',user.Reportuser.as_view()),
     path('report/post/',post.ReportPost.as_view()),
     path('add/user/tostory/view/<int:storyID>/',story.AddViewers.as_view()),
-    path('user/notifications/',notification.UserNotificationsView.as_view())
+    path('user/notifications/',notification.UserNotificationsView.as_view()),
+    path('get/all/chats/<int:roomID>/',chat.GetrommChats.as_view())
 ]
