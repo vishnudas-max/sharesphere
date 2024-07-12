@@ -47,12 +47,18 @@ class addStoryView(APIView):
 
 
 class AddViewers(APIView):
-    def post(self,request,storyID):
-        user = request.user
-        story = get_object_or_404(Story, id=storyID)
-        story.viewed_users.add(user)
-        story.save()
-        return Response('Added to Viewed Users', status=status.HTTP_200_OK)
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
     
-    def handle_exception(self, exc):
-        return Response(str(exc), status=status.HTTP_400_BAD_REQUEST)
+    def post(self,request,storyID):
+        print('hei')
+        user = request.user
+        try:
+            story =Story.objects.get(id=storyID)
+            print(story.id)
+            story.viewed_users.add(user)
+            story.save()
+            return Response('Added to Viewed Users', status=status.HTTP_200_OK)
+        except:
+            return Response('Something Went Wrong',status=status.HTTP_400_BAD_REQUEST)
+    
