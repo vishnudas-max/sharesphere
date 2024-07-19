@@ -9,7 +9,6 @@ from userside.models import Posts, CustomUser
 from rest_framework.views import APIView
 from .models import PostLike, Comments, PostReports
 from django.db.models import Count
-from notification.signals import user_commented, post_liked
 from .tasks import send_comment_notification, send_like_notification
 from rest_framework.pagination import PageNumberPagination
 
@@ -111,8 +110,8 @@ class PostLikeViewSet(viewsets.ModelViewSet):
 
         except PostLike.DoesNotExist:
             PostLike.objects.create(postID=post, userID=user)
-            send_like_notification.delay(user_id=user.id, post_id=post.id)
-            # post_liked.send(sender=self.__class__,liked_user =user, owner_of_post=post.userID)
+            if post.userID.id != user.id:
+                send_like_notification.delay(user_id=user.id, post_id=post.id)
             return Response({'detail': 'Post liked successfully'}, status=status.HTTP_201_CREATED)
 
 
@@ -135,11 +134,13 @@ class CommentView(APIView):
         data = request.data
         postID = data['postID']
         user = request.user
+        post = Posts.objects.get(id=postID)
         serializer = CommentCreateSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             # giving notification sending to celery-
-            send_comment_notification.delay(userID=user.id, postID=postID)
+            if user.id != post.userID.id:
+                send_comment_notification.delay(userID=user.id, postID=postID)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

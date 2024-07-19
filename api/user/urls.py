@@ -37,5 +37,7 @@ urlpatterns = [
     path('report/post/',post.ReportPost.as_view()),
     path('add/user/tostory/view/<int:storyID>/',story.AddViewers.as_view()),
     path('user/notifications/',notification.UserNotificationsView.as_view()),
-    path('get/all/chats/<int:roomID>/',chat.GetrommChats.as_view())
+    path('get/all/chats/<int:roomID>/',chat.GetrommChats.as_view()),
+    path('user/account/sercurity/',user.ChangePassword.as_view()),
+    path('verify/account/',user.RequestVerification.as_view())
 ]

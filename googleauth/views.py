@@ -26,7 +26,7 @@ class GoogleLoginApi(APIView):
         try:
             user = User.objects.get(email=user_data['email'])
             if(user.is_active == False):
-                redirect_url = f"{settings.BASE_APP_URL}?message='You have been blocked to access sharesphere'"
+                redirect_url = f"{settings.BASE_APP_URL}?message='This account in no longer accessible'"
                 return redirect(redirect_url)
             tokens = get_tokens_for_user(user)
             redirect_url = f"{settings.BASE_APP_URL}?access={tokens['access']}&refresh={tokens['refresh']}"

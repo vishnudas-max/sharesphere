@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, GetRandomUsersSerializer, ProfileDetailSeializer, get_tokens_for_user, UserReportSerializer, CustomTokenRefreshSerializer
+from .serializers import RegisterSerializer, GetRandomUsersSerializer, ProfileDetailSeializer, get_tokens_for_user, UserReportSerializer,RequestVerificationSeializer,GetverificationDetailes
 import pyotp
 import time
 from .models import Regotp, CustomUser
@@ -201,7 +201,8 @@ class GetUserProfile(APIView):
             return Response( 'something went wrong!', status=status.HTTP_400_BAD_REQUEST)
 
         data = request.data
-        if data['username']:
+        print(data)
+        if 'username' in data:
             if CustomUser.objects.filter(username = data['username']).exclude(id=id):
                 return Response('username already in use', status=status.HTTP_400_BAD_REQUEST)
         serializer = ProfileDetailSeializer(user, data=data, partial=True, context={'request': request})
@@ -219,7 +220,7 @@ class LoginView(APIView):
         if user is None:
             return Response('Invalid Username or passsword', status=status.HTTP_400_BAD_REQUEST)
         if user.is_active == False:
-            return Response('You have been blocked to access Sharesphere', status=status.HTTP_400_BAD_REQUEST)
+            return Response('This Account is no longer accessible', status=status.HTTP_400_BAD_REQUEST)
         tokens = get_tokens_for_user(user)
         return Response(tokens, status=status.HTTP_200_OK)
 
@@ -265,3 +266,49 @@ class Reportuser(APIView):
             serializer.save()
             return Response('Report Succes', status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ChangePassword(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    def patch(self,request):
+        try:
+            password = request.data['password']
+            user = request.user
+            user.set_password(password)
+            user.save()
+
+            return Response('Password Updated',status=status.HTTP_200_OK)
+        except:
+            return Response('something went wrong ',status=status.HTTP_400_BAD_REQUEST)
+        
+    def delete(self,request):
+        try:
+            user=request.user
+            user.is_active=False
+            user.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except:
+            return Response('something went wrong!',status=status.HTTP_400_BAD_REQUEST)
+            
+
+class RequestVerification(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self,request):
+        data = request.data
+        serializer = RequestVerificationSeializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response('Request Send',status=status.HTTP_200_OK)
+        return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self,request):
+        data = request.user
+        serializer = GetverificationDetailes(data)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+    
+
+

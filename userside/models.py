@@ -87,3 +87,21 @@ class UserReports(models.Model):
     report_reason = models.TextField(null=False)
     action_took = models.BooleanField(default=False)
     reported_time = models.DateTimeField(auto_now_add=True)
+
+
+
+class Verification(models.Model):
+
+
+    userID = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='verificationData')
+    document = models.ImageField(upload_to='verificationDocs/')
+    is_accepted = models.BooleanField(default=False)
+    is_rejected = models.BooleanField(default=False)
+    is_subscribed = models.BooleanField(default=False)
+    plan_choosed = models.CharField(max_length=50,null=True,blank=True)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2,null=True,blank=True)
+    subscribed_date = models.DateTimeField(null=True, blank=True)
+    requested_time = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Verification for {self.userID.username} - {self.plan_choosed}"

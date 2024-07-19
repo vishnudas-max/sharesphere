@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import CustomUser
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from .models import Posts,UserReports
+from .models import Posts,UserReports,Verification
 from post.serializers import UserDetailsSerializer
 from rest_framework_simplejwt.tokens import RefreshToken ,TokenError
 
@@ -14,6 +14,7 @@ def get_tokens_for_user(user):
     # Add custom claims
     refresh['is_admin'] = user.is_superuser
     refresh['username'] = user.username
+
 
     return {
         'refresh': str(refresh),
@@ -99,12 +100,13 @@ class ProfileDetailSeializer(serializers.ModelSerializer):
     is_following = serializers.SerializerMethodField(read_only=True)
     following = serializers.SerializerMethodField(read_only=True)
     followers = serializers.SerializerMethodField(read_only=True)
+    
 
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'profile_pic', 'bio', 'created_date', 'is_active', 'is_admin', 'is_verified', 'post_count', 'followers_count', 'following_count', 
                   'posts','is_following','following','followers']
-
+      
     def get_post_count(self, obj):
         return obj.userPosts.count()
 
@@ -163,3 +165,37 @@ class CustomTokenRefreshSerializer(serializers.Serializer):
 
         except TokenError as e:
             raise serializers.ValidationError(str(e))
+
+
+class RequestVerificationSeializer(serializers.ModelSerializer):
+    class Meta:
+        model = Verification
+        fields = ['userID','document']
+
+
+class VerficationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model =Verification
+        fields = '__all__'
+        exlude = ['userID','docuement']
+
+class GetverificationDetailes(serializers.ModelSerializer):
+    is_requested=serializers.SerializerMethodField(read_only=True)
+    verification_detailes = serializers.SerializerMethodField(read_only = True)
+    class Meta:
+        model = CustomUser
+        fields =['id','username','profile_pic','is_requested','verification_detailes','is_verified']
+
+    def get_is_requested(self,obj):
+        if Verification.objects.filter(userID=obj.id).exists():
+            return True
+        else:
+            return False
+        
+    def get_verification_detailes(self,obj):
+       try:
+           verification_obj = obj.verificationData
+           return VerficationSerializer(verification_obj).data
+       except:
+           return None
+   

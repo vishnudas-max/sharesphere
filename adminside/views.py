@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -9,10 +9,12 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.db.models import Count, F
 from django.db.models.functions import ExtractWeekDay
 from rest_framework import viewsets
-from .serializers import AdminUserSerializer,GetReportSerializer,AdminPostSeializer
+from .serializers import AdminUserSerializer,GetReportSerializer,AdminPostSeializer,VerificationSerializer
 from rest_framework.pagination import PageNumberPagination
 from .task import send_mail_to
 from post.models import PostReports
+from userside.models import Verification
+from rest_framework.decorators import action
 # Create your views here.
 
 
@@ -72,7 +74,6 @@ class GeUsers(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         search_query = self.request.query_params.get('search', None)
-        min_report_count = self.request.query_params.get('min_report_count', None)
         show_deactivated = self.request.query_params.get('show_deactivated', 'false').lower() in ['true', '1', 'yes']
 
         if search_query:
@@ -86,14 +87,15 @@ class GeUsers(viewsets.ModelViewSet):
 
         queryset = queryset.annotate(
             post_count=Count('userPosts'),
-            report_count=Count('allreports')  # Assuming UserReport model has a ForeignKey to CustomUser
+            report_count=Count('allreports',distinct=True) 
         )
         
-        if min_report_count is not None:
-            queryset = queryset.filter(report_count__gte=min_report_count)
-
+    
         queryset = queryset.order_by('-report_count')
         return queryset
+    
+    
+    
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -182,3 +184,40 @@ class GetPostReprts(APIView):
         reports = PostReports.objects.filter(reported_post= id)
         serializer = GetReportSerializer(reports,many=True)
         return Response(serializer.data,status=status.HTTP_200_OK)
+    
+
+class GetVerificationRequets(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes =[IsAuthenticated]
+    queryset = Verification.objects.all()
+    serializer_class = VerificationSerializer
+    pagination_class = StandardResultsSetPagination
+
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        show_accepted = self.request.query_params.get('accepted', 'false').lower() in ['true', '1', 'yes']
+        show_rejected = self.request.query_params.get('rejected', 'false').lower() in ['true', '1' ,'yes']
+        print(show_accepted,show_rejected)
+        if show_accepted == True:
+            queryset = queryset.filter(is_accepted = True)
+        elif show_rejected == True:
+            queryset = queryset.filter(is_rejected = True)
+        else:
+            queryset = queryset.filter(Q(is_accepted= False) & Q(is_rejected =False))
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        verification = self.get_object()
+        print(verification)
+        verification.is_accepted = True
+        verification.save()
+        return Response({'status': 'verification accepted'}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        verification = self.get_object()
+        verification.is_rejected = True
+        verification.save()
+        return Response({'status': 'verification rejected'}, status=status.HTTP_200_OK)

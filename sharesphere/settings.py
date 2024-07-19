@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'post',
     'chat',
     'story',
+    'payment',
     'notification',
     'rest_framework',
     'corsheaders',
@@ -217,3 +218,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 4,  # Number of posts per page
 }
+
+
+
+RAZORPAY_SECRET=os.getenv('RAZORPAY_SECRET')
+RAZORPAY_KEY_ID=os.getenv('RAZORPAY_KEY_ID')

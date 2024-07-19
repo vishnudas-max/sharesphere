@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from userside.models import CustomUser,UserReports,Posts
 from post.models import PostReports
+from userside.models import Verification
 
 
 
@@ -42,3 +43,15 @@ class GetPostReportSerializer(serializers.ModelSerializer):
         fields = ['reported_by','report_reason']
     def get_reported_by(self,obj):
         return obj.reported_by.username
+    
+# serializer for getting verfication request--
+class VerificationSerializer(serializers.ModelSerializer):
+
+    userID = serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model = Verification
+        fields = ['id','userID','document','is_accepted','is_rejected']
+
+    def get_userID(self,obj):
+        user=CustomUser.objects.get(id=obj.userID.id)
+        return user.username
