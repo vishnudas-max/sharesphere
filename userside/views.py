@@ -407,3 +407,5 @@ class ForgotPasswordResendOtpView(APIView):
         # sending mail-
         send_mail_to.delay(message=message, mail=email)
         return Response({'status': True, 'message': 'OTP send', 'email': email}, status=status.HTTP_200_OK)
+    
+

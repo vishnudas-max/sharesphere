@@ -4,7 +4,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from .serializers import postCreateSeializer, PostsSerializer, PostLikeserializer, CommentSerializer, CommentCreateSerializer
+from .serializers import postCreateSeializer, PostsSerializer, PostLikeserializer, CommentSerializer, CommentCreateSerializer,ExploreSerializer,ExploreUserSerializer
 from userside.models import Posts, CustomUser
 from rest_framework.views import APIView
 from .models import PostLike, Comments, PostReports
@@ -17,6 +17,16 @@ from rest_framework.pagination import PageNumberPagination
 
 class CustomPagination(PageNumberPagination):
     page_size = 4  # Default page size
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class PaginationForExplore(PageNumberPagination):
+    page_size =6  # Default page size
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+class PaginationForUsers(PageNumberPagination):
+    page_size =10  # Default page size
     page_size_query_param = 'page_size'
     max_page_size = 100
 
@@ -202,3 +212,37 @@ class ReportPost(APIView):
         except Exception as e:
             print(e)
             return Response('Something Wend wrong', status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class ExploreView(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = Posts.objects.all()
+    serializer_class = ExploreSerializer
+    pagination_class = PaginationForExplore
+
+    def get_queryset(self):
+        return self.queryset.filter(
+            is_deleted=False, userID__is_active=True
+        ).annotate(
+            likes_count=Count('postlikes')
+        ).order_by('-likes_count')
+
+
+class ExploreUserSearch(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    queryset = CustomUser.objects.all()
+    serializer_class = ExploreUserSerializer
+    pagination_class =None
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            queryset = queryset.filter(username__icontains=search_query)
+        return queryset
+     
+
+

@@ -112,3 +112,16 @@ class CommentSerializer(serializers.ModelSerializer):
             return f"{diff.seconds // 60} minutes ago"
         else:
             return f"{diff.seconds} seconds ago"
+        
+# serilizer to get data for explore page--
+class ExploreSerializer(serializers.ModelSerializer):
+    likes_count = serializers.IntegerField()
+    class Meta:
+        model = Posts
+        fields =['id','contend','likes_count']
+
+# serilaizer for serching users in explore page--
+class ExploreUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id','username','profile_pic']

@@ -11,11 +11,13 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from rest_framework.routers import DefaultRouter
-from post.views import PostsViewSet,PostLikeViewSet
+from post.views import PostsViewSet,PostLikeViewSet,ExploreView,ExploreUserSearch
 
 router = DefaultRouter()
-router.register(r'posts', PostsViewSet)
-router.register(r'postlike', PostLikeViewSet)
+router.register(r'posts', PostsViewSet,basename='posts')
+router.register(r'postlike', PostLikeViewSet,basename='postlike')
+router.register(r'explore', ExploreView,basename='explore')
+router.register(r'exploreusers',ExploreUserSearch,basename='exploreusers')
 
 urlpatterns = [
     path('register/',user.RegisterView.as_view(),name='register'),
@@ -43,4 +45,5 @@ urlpatterns = [
     path('forgot/password/verification/',user.ForgotPassword.as_view()),
     path('forgot/password/verification/otp/',user.VerifyOtp_for_ForgotPassword.as_view()),
     path('forgot/password/verification/otp/resend/',user.ForgotPasswordResendOtpView.as_view())
+
 ]
