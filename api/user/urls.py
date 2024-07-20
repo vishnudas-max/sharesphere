@@ -39,5 +39,8 @@ urlpatterns = [
     path('user/notifications/',notification.UserNotificationsView.as_view()),
     path('get/all/chats/<int:roomID>/',chat.GetrommChats.as_view()),
     path('user/account/sercurity/',user.ChangePassword.as_view()),
-    path('verify/account/',user.RequestVerification.as_view())
+    path('verify/account/',user.RequestVerification.as_view()),
+    path('forgot/password/verification/',user.ForgotPassword.as_view()),
+    path('forgot/password/verification/otp/',user.VerifyOtp_for_ForgotPassword.as_view()),
+    path('forgot/password/verification/otp/resend/',user.ForgotPasswordResendOtpView.as_view())
 ]

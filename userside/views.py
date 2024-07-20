@@ -32,19 +32,20 @@ def hash_otp(otp):
     hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
     return hashed_otp
 
+def generate_otp():
+        otp = ''.join(random.choices(string.digits, k=4))
+        return otp
 
 class RegisterView(APIView):
 
-    def generate_otp(self):
-        otp = ''.join(random.choices(string.digits, k=4))
-        return otp
+   
 
     def post(self, request):
 
         data = request.data
         serializer = RegisterSerializer(data=data)
         if serializer.is_valid():
-            otp = self.generate_otp()
+            otp = generate_otp()
             hashedotp = hash_otp(otp)
             email = data['email']
             phone_number = data['phone_number']
@@ -312,3 +313,97 @@ class RequestVerification(APIView):
     
 
 
+# sending otp for forgot password --
+class ForgotPassword(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        print(email)
+        try:
+            user = CustomUser.objects.get(email=email)
+            otp = generate_otp()
+            hashedotp = hash_otp(otp)
+            message = f"""
+                SHARESPHERE,
+                Your OTP for Verification {otp}
+            """
+            title = "OTP VERIFICATION"
+            # sending mail-
+            send_mail_to.delay(message=message, mail=email)
+            obj, created = Regotp.objects.update_or_create(
+                email=email,
+                defaults={
+                    'secret': hashedotp,
+                    'user_data':{}
+                }
+            )
+            return Response({'status': True, 'message': 'OTP sent', 'email': email}, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response({'status': False, 'message': 'There is no matching account found'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            return Response({'status': False, 'message': 'An error occurred'}, status=status.HTTP_400_BAD_REQUEST)
+        
+class VerifyOtp_for_ForgotPassword(APIView):
+
+    def post(self, request):
+        otp = request.data['otp']
+        email = request.data['email']
+        try:
+            otp_instance =Regotp.objects.get(email=email)
+            originalotp = otp_instance.secret
+            otp_time =otp_instance.otp_time
+        except:
+            return Response({'status': False, 'message': 'request time out'}, status=status.HTTP_400_BAD_REQUEST)
+
+        hashedotp = hash_otp(otp)
+        is_valid = originalotp == hashedotp
+        if is_valid:
+            current_time = timezone.now()
+            time_difference = current_time - otp_time
+            if time_difference > timedelta(minutes=1):
+                return Response({'status': False, 'message': 'Otp time out'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            otp_instance.delete()
+            return Response({'status': True, 'message':'otp validattion success'}, status=status.HTTP_200_OK)
+        
+        else:
+            current_time = timezone.now()
+            time_difference = current_time - otp_time
+            if time_difference > timedelta(minutes=1):
+                return Response({'status': False, 'message': 'Otp time out'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'status': False, 'message': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    def patch(self,request):
+        try:
+            password = request.data['password']
+            email = request.data['email']
+            user = CustomUser.objects.get(email=email)
+            user.set_password(password)
+            user.save()
+
+            return Response('Password Updated',status=status.HTTP_200_OK)
+        except:
+            return Response('something went wrong ',status=status.HTTP_400_BAD_REQUEST)
+        
+class ForgotPasswordResendOtpView(APIView):
+
+    def post(self, request):
+        try:
+            email = request.data['email']
+            otp_intance = Regotp.objects.get(email=email)
+        except:
+            return Response({'status': False, 'message': 'Request time out'}, status=status.HTTP_400_BAD_REQUEST)
+
+        otp = generate_otp()
+        hashedotp = hash_otp(otp)
+        Regotp.objects.filter(email=email).update(
+            otp_time=timezone.now(), secret=hashedotp)
+        message = f"""
+                        SHARESPHERE,
+                           Your OTP for Verification {otp}
+                    """
+        title = "OTP VERIFICATION"
+        # sending mail-
+        send_mail_to.delay(message=message, mail=email)
+        return Response({'status': True, 'message': 'OTP send', 'email': email}, status=status.HTTP_200_OK)
