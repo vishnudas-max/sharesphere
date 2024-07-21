@@ -189,6 +189,19 @@ class GetUserProfile(APIView):
     def get(self, request, id):
         try:
             user = CustomUser.objects.get(id=id)
+            try:
+                verification_obj = user.verificationData
+                if verification_obj and verification_obj.plan_choosed and verification_obj.expiry_date < timezone.now():
+                        user.is_verified = False
+                        user.save()
+
+                        verification_obj.is_subscribed = False
+                        verification_obj.plan_choosed = None
+                        verification_obj.amount_paid = None
+                        verification_obj.subscribed_date = None
+                        verification_obj.save()
+            except:
+                pass
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=404)
 

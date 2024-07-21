@@ -24,10 +24,23 @@ class GetUsers(APIView):
         chat_users = CustomUser.objects.filter(chatRooms__in=chat_rooms).exclude(id=user.id).distinct()
 
         all_users = following_users.union(chat_users)
-
-
-        serializer = UserSerializer(all_users,many = True,context={'user': user.id})
+        blocked_users = user.blocked_users.all()
+        filtered_users = all_users.difference(blocked_users)
+        serializer = UserSerializer(filtered_users,many = True,context={'user': user.id})
         return Response(serializer.data)
+    
+    def post(self,request):
+        room_id = request.data.get('room_id')
+        if not room_id:
+            return Response({"error": "Room ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            room = Room.objects.get(id=room_id)
+        except Room.DoesNotExist:
+            return Response({"error": "Room not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        Chat.objects.filter(room=room).update(is_read=True)
+
+        return Response({"message": "All messages marked as read"}, status=status.HTTP_200_OK)
     
 
 class GetrommChats(APIView):

@@ -4,9 +4,10 @@ from .models import Room
 
 class UserSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField(read_only =True)
+    blocked_by = serializers.SerializerMethodField(read_only =True)
     class Meta:
         model = CustomUser
-        fields = ['id','username','profile_pic','last_message']
+        fields = ['id','username','profile_pic','last_message','blocked_by']
 
     def get_last_message(self,obj):
         user =self.context['user']
@@ -16,3 +17,9 @@ class UserSerializer(serializers.ModelSerializer):
             return {'message':room.last_message,'time':room.last_message_time}
         else:
             return ''
+        
+    def get_blocked_by(self,obj):
+        user = self.context['user']
+        currentUser = CustomUser.objects.get(id=user)
+        blocked_by_users = currentUser.blocked_by.all()
+        return obj in blocked_by_users 
