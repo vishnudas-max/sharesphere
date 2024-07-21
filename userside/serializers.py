@@ -198,4 +198,10 @@ class GetverificationDetailes(serializers.ModelSerializer):
            return VerficationSerializer(verification_obj).data
        except:
            return None
-   
+
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields =['id','username','profile_pic']

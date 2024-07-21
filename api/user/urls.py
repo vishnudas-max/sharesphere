@@ -44,6 +44,7 @@ urlpatterns = [
     path('verify/account/',user.RequestVerification.as_view()),
     path('forgot/password/verification/',user.ForgotPassword.as_view()),
     path('forgot/password/verification/otp/',user.VerifyOtp_for_ForgotPassword.as_view()),
-    path('forgot/password/verification/otp/resend/',user.ForgotPasswordResendOtpView.as_view())
+    path('forgot/password/verification/otp/resend/',user.ForgotPasswordResendOtpView.as_view()),
+    path('block/user/',user.BlockUserView.as_view())
 
 ]

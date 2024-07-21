@@ -34,6 +34,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         'self', symmetrical=False, related_name='user_followers', blank=True)
     followers = models.ManyToManyField(
         'self', symmetrical=False, related_name='user_followwing', blank=True)
+    blocked_users = models.ManyToManyField('self', symmetrical=False, related_name='blocked_by', blank=True)
 
     objects = CustomUserManager()
 

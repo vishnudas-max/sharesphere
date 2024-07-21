@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import RegisterSerializer, GetRandomUsersSerializer, ProfileDetailSeializer, get_tokens_for_user, UserReportSerializer,RequestVerificationSeializer,GetverificationDetailes
+from .serializers import RegisterSerializer, GetRandomUsersSerializer, ProfileDetailSeializer, get_tokens_for_user, UserReportSerializer,RequestVerificationSeializer,GetverificationDetailes,UserSerializer
 import pyotp
 import time
 from .models import Regotp, CustomUser
@@ -408,4 +408,44 @@ class ForgotPasswordResendOtpView(APIView):
         send_mail_to.delay(message=message, mail=email)
         return Response({'status': True, 'message': 'OTP send', 'email': email}, status=status.HTTP_200_OK)
     
+
+class BlockUserView(APIView):
+    authentication_classes =[JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self,request,userID=None):
+        user=request.user
+        blocked_users = user.blocked_users.all()
+        serializer = UserSerializer(blocked_users,many =True)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+
+
+    def post(self,request):
+        userID = request.data.get('userID')
+        user = request.user
+        try:
+            user_to_block = CustomUser.objects.get(id=userID)
+            if user_to_block == user:
+                return Response("You cannot block yourself.", status=status.HTTP_400_BAD_REQUEST)
+
+            if user_to_block in user.blocked_users.all():
+                return Response(f"You have already blocked {user_to_block.username}.", status=status.HTTP_400_BAD_REQUEST)
+
+            user.blocked_users.add(user_to_block)
+            return Response(f"You have successfully blocked {user_to_block.username}.", status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response("User not found.", status=status.HTTP_404_NOT_FOUND)
+    
+    def patch(self,request):
+        userID = request.data.get('userID')
+        user = request.user
+        try:
+            user_to_block = CustomUser.objects.get(id=userID)
+            if user_to_block in user.blocked_users.all():
+                user.blocked_users.remove(user_to_block)
+
+            return Response({'status':True,'message':f"{user_to_block.username} has been removed from block list"},status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response("User not found.", status=status.HTTP_404_NOT_FOUND)
+
 
