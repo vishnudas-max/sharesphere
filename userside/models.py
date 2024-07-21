@@ -4,6 +4,8 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils import timezone
 from .manager import CustomUserManager
 from django.core.validators import RegexValidator
+from django.utils import timezone
+from datetime import timedelta
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -93,6 +95,11 @@ class UserReports(models.Model):
 
 class Verification(models.Model):
 
+    PLAN_DURATIONS = {
+        '6 Months': timedelta(days=6*30),
+        '1 Year': timedelta(days=365),
+        '2 Year': timedelta(days=2*365)
+    }
 
     userID = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='verificationData')
     document = models.ImageField(upload_to='verificationDocs/')
@@ -106,3 +113,8 @@ class Verification(models.Model):
 
     def __str__(self):
         return f"Verification for {self.userID.username} - {self.plan_choosed}"
+    @property
+    def expiry_date(self):
+        if self.subscribed_date and self.plan_choosed in self.PLAN_DURATIONS:
+            return self.subscribed_date + self.PLAN_DURATIONS[self.plan_choosed]
+        return None

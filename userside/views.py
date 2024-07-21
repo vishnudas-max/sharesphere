@@ -307,8 +307,21 @@ class RequestVerification(APIView):
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
     
     def get(self,request):
-        data = request.user
-        serializer = GetverificationDetailes(data)
+        user = request.user
+        try:
+            verification_obj = user.verificationData
+            if verification_obj and verification_obj.plan_choosed and verification_obj.expiry_date < timezone.now():
+                    user.is_verified = False
+                    user.save()
+
+                    verification_obj.is_subscribed = False
+                    verification_obj.plan_choosed = None
+                    verification_obj.amount_paid = None
+                    verification_obj.subscribed_date = None
+                    verification_obj.save()
+        except:
+            pass
+        serializer = GetverificationDetailes(user)
         return Response(serializer.data,status=status.HTTP_200_OK)
     
 

@@ -5,7 +5,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Posts,UserReports,Verification
 from post.serializers import UserDetailsSerializer
 from rest_framework_simplejwt.tokens import RefreshToken ,TokenError
-
+from django.utils import timezone
 
 
 def get_tokens_for_user(user):
@@ -187,6 +187,8 @@ class VerficationSerializer(serializers.ModelSerializer):
 class GetverificationDetailes(serializers.ModelSerializer):
     is_requested=serializers.SerializerMethodField(read_only=True)
     verification_detailes = serializers.SerializerMethodField(read_only = True)
+
+
     class Meta:
         model = CustomUser
         fields =['id','username','profile_pic','is_requested','verification_detailes','is_verified']
@@ -203,6 +205,8 @@ class GetverificationDetailes(serializers.ModelSerializer):
            return VerficationSerializer(verification_obj).data
        except:
            return None
+       
+    
 
 
 
