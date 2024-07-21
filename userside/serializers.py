@@ -100,12 +100,13 @@ class ProfileDetailSeializer(serializers.ModelSerializer):
     is_following = serializers.SerializerMethodField(read_only=True)
     following = serializers.SerializerMethodField(read_only=True)
     followers = serializers.SerializerMethodField(read_only=True)
+    is_currentUser_verified = serializers.SerializerMethodField(read_only =True)
     
 
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'profile_pic', 'bio', 'created_date', 'is_active', 'is_admin', 'is_verified', 'post_count', 'followers_count', 'following_count', 
-                  'posts','is_following','following','followers']
+                  'posts','is_following','following','followers','is_currentUser_verified']
       
     def get_post_count(self, obj):
         return obj.userPosts.count()
@@ -133,6 +134,10 @@ class ProfileDetailSeializer(serializers.ModelSerializer):
     def get_posts(self,obj):
         posts= obj.userPosts.filter(is_deleted=False)
         return PostSerializer(posts,many = True).data
+    
+    def get_is_currentUser_verified(self,obj):
+        user = self.context['request'].user
+        return user.is_verified
     
 
 class UserReportSerializer(serializers.ModelSerializer):

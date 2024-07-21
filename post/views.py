@@ -4,13 +4,14 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from .serializers import postCreateSeializer, PostsSerializer, PostLikeserializer, CommentSerializer, CommentCreateSerializer,ExploreSerializer,ExploreUserSerializer
+from .serializers import postCreateSeializer, PostsSerializer, PostLikeserializer, CommentSerializer, CommentCreateSerializer, ExploreSerializer, ExploreUserSerializer
 from userside.models import Posts, CustomUser
 from rest_framework.views import APIView
 from .models import PostLike, Comments, PostReports
 from django.db.models import Count
 from .tasks import send_comment_notification, send_like_notification
 from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
 
 # Create your views here.
 
@@ -20,13 +21,15 @@ class CustomPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+
 class PaginationForExplore(PageNumberPagination):
-    page_size =6  # Default page size
+    page_size = 6  # Default page size
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+
 class PaginationForUsers(PageNumberPagination):
-    page_size =10  # Default page size
+    page_size = 10  # Default page size
     page_size_query_param = 'page_size'
     max_page_size = 100
 
@@ -58,12 +61,17 @@ class PostsViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = self.queryset
+        user = self.request.user
         query_set = queryset.filter(
             is_deleted=False, userID__is_active=True
         ).annotate(
             likes_count=Count('postlikes')
-        ).order_by('-uploadDate','-updatedDate')
-        
+        ).order_by('-uploadDate', '-updatedDate')
+
+        if user.is_verified == False:
+            query_set = query_set.filter(
+                Q(userID__in=user.following.all()) | Q(userID=user))
+
         # annotating counnt of totallikes ussing reverse forignkey relation
         return query_set
 
@@ -214,7 +222,6 @@ class ReportPost(APIView):
             return Response('Something Wend wrong', status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class ExploreView(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -223,11 +230,12 @@ class ExploreView(viewsets.ModelViewSet):
     pagination_class = PaginationForExplore
 
     def get_queryset(self):
-        return self.queryset.filter(
-            is_deleted=False, userID__is_active=True
-        ).annotate(
-            likes_count=Count('postlikes')
-        ).order_by('-likes_count')
+        queryset = self.queryset
+        user = self.request.user
+        queryset = queryset.filter(is_deleted=False, userID__is_active=True).annotate(  likes_count=Count('postlikes')).order_by('-likes_count')
+        if user.is_verified == False:
+            queryset = queryset.filter(Q(userID__in=user.following.all()) | Q(userID=user))
+        return queryset
 
 
 class ExploreUserSearch(viewsets.ModelViewSet):
@@ -235,7 +243,7 @@ class ExploreUserSearch(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = CustomUser.objects.all()
     serializer_class = ExploreUserSerializer
-    pagination_class =None
+    pagination_class = None
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -243,6 +251,3 @@ class ExploreUserSearch(viewsets.ModelViewSet):
         if search_query:
             queryset = queryset.filter(username__icontains=search_query)
         return queryset
-     
-
-
