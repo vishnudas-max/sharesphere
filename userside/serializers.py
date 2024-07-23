@@ -98,15 +98,14 @@ class ProfileDetailSeializer(serializers.ModelSerializer):
     following_count = serializers.SerializerMethodField(read_only=True)
     posts = serializers.SerializerMethodField(read_only=True)
     is_following = serializers.SerializerMethodField(read_only=True)
-    following = serializers.SerializerMethodField(read_only=True)
-    followers = serializers.SerializerMethodField(read_only=True)
-    is_currentUser_verified = serializers.SerializerMethodField(read_only =True)
+    is_currentUser_verified = serializers.SerializerMethodField(read_only = True)
+
     
 
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'email', 'profile_pic', 'bio', 'created_date', 'is_active', 'is_admin', 'is_verified', 'post_count', 'followers_count', 'following_count', 
-                  'posts','is_following','following','followers','is_currentUser_verified']
+                  'posts','is_following','is_currentUser_verified']
       
     def get_post_count(self, obj):
         return obj.userPosts.count()
@@ -115,30 +114,23 @@ class ProfileDetailSeializer(serializers.ModelSerializer):
         return obj.followers.count()
 
     def get_following_count(self, obj):
-        return obj.following.count()
+        blocked_users = obj.blocked_users.all()
+        users= obj.following.all()
+        users = users.exclude(id__in=blocked_users.values_list('id', flat=True))
+        return users.count()
     
     def get_is_following(self,obj):
         user = self.context['request'].user
         return obj in user.following.all()
     
-    def get_following(self,obj):
-        user = self.context['request'].user
-        users =user.following.all()
-        return UserDetailsSerializer(users,many=True).data
-    
-    def get_followers(self,obj):
-        user = self.context['request'].user
-        users =user.followers.all()
-        return UserDetailsSerializer(users,many=True).data
-    
     def get_posts(self,obj):
-        posts= obj.userPosts.filter(is_deleted=False)
+        posts= obj.userPosts.filter(is_deleted=False).order_by('-uploadDate')
         return PostSerializer(posts,many = True).data
     
     def get_is_currentUser_verified(self,obj):
-        user = self.context['request'].user
-        return user.is_verified
-    
+         user = self.context['request'].user
+         return user.is_verified
+
 
 class UserReportSerializer(serializers.ModelSerializer):
     class Meta:

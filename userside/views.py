@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status,viewsets
 from .serializers import RegisterSerializer, GetRandomUsersSerializer, ProfileDetailSeializer, get_tokens_for_user, UserReportSerializer,RequestVerificationSeializer,GetverificationDetailes,UserSerializer
 import pyotp
 import time
@@ -22,6 +22,7 @@ import string
 import hashlib
 from rest_framework_simplejwt.views import TokenRefreshView
 from .signals import user_followed, user_unfollowed
+
 
 
 # Create your views here.
@@ -475,3 +476,29 @@ class BlockUserView(APIView):
             return Response("User not found.", status=status.HTTP_404_NOT_FOUND)
 
 
+class GetFollwingAndFollowers(APIView):
+        authentication_classes=[JWTAuthentication]
+        permission_classes = [IsAuthenticated]
+        def get(self,request,id=None):
+            try:
+                user = CustomUser.objects.get(id=id)
+                search_query = self.request.query_params.get('search', None)
+                following = self.request.query_params.get('following', 'false').lower() in ['true', '1', 'yes']
+
+                if following:
+                    users = user.following.all()
+                else:
+                    users = user.followers.all()
+
+                # Exclude blocked users
+                blocked_users = user.blocked_users.all()
+                users = users.exclude(id__in=blocked_users.values_list('id', flat=True))
+
+                if search_query:
+                
+                    users = users.filter(Q(username__icontains=search_query) | Q(email__icontains=search_query))
+
+                serialized_data = UserSerializer(users, many=True)
+                return Response(serialized_data.data, status=status.HTTP_200_OK)
+            except:
+                return Response('something went wroing',status=status.HTTP_400_BAD_REQUEST)

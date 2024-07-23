@@ -241,7 +241,7 @@ class ExploreView(viewsets.ModelViewSet):
 class ExploreUserSearch(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    queryset = CustomUser.objects.all()
+    queryset = CustomUser.objects.filter(is_superuser=False).all()
     serializer_class = ExploreUserSerializer
     pagination_class = None
 
