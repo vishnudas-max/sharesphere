@@ -167,7 +167,7 @@ class CustomTokenRefreshSerializer(serializers.Serializer):
 class RequestVerificationSeializer(serializers.ModelSerializer):
     class Meta:
         model = Verification
-        fields = ['userID','document']
+        fields = ['userID','document_type','document_number']
 
 
 class VerficationSerializer(serializers.ModelSerializer):

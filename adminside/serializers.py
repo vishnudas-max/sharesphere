@@ -50,7 +50,7 @@ class VerificationSerializer(serializers.ModelSerializer):
     userID = serializers.SerializerMethodField(read_only=True)
     class Meta:
         model = Verification
-        fields = ['id','userID','document','is_accepted','is_rejected']
+        fields = ['id','userID','document_type','document_number','is_accepted','is_rejected']
 
     def get_userID(self,obj):
         user=CustomUser.objects.get(id=obj.userID.id)

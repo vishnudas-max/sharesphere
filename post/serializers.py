@@ -8,7 +8,7 @@ from django.utils import timezone
 class UserDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id','username','profile_pic']
+        fields = ['id','username','profile_pic','is_verified']
 
 # serializer to serializer liked users-
 class PostLikeserializer(serializers.ModelSerializer):

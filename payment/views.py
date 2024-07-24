@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.utils import timezone
 from django.conf import settings
-
+from userside.tasks import send_verification_success_notification
 
 
 
@@ -53,6 +53,7 @@ class PaymentSuccesView(APIView):
                 verification_instance.subscribed_date = timezone.now()
                 verification_instance.save()
                 user.is_verified = True
+                send_verification_success_notification.delay(user.id)
                 user.save()
                 return Response({'message': 'Subscription details updated successfully'}, status=status.HTTP_200_OK)
             # except Verification.DoesNotExist:

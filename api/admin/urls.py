@@ -16,6 +16,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path('user/reports/<int:id>/',views.GerUserReports.as_view()),
     path('post/reports/<int:id>/',views.GetPostReprts.as_view()),
+    path('user/delete/<int:id>/',views.DeleteUser.as_view())
   
 
 ]

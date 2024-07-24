@@ -102,7 +102,8 @@ class Verification(models.Model):
     }
 
     userID = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='verificationData')
-    document = models.ImageField(upload_to='verificationDocs/')
+    document_type = models.CharField(max_length=100,null=True,blank=True)
+    document_number = models.CharField(max_length=20,null=True,blank=True)
     is_accepted = models.BooleanField(default=False)
     is_rejected = models.BooleanField(default=False)
     is_subscribed = models.BooleanField(default=False)

@@ -5,9 +5,9 @@ from rest_framework import status,viewsets
 from .serializers import RegisterSerializer, GetRandomUsersSerializer, ProfileDetailSeializer, get_tokens_for_user, UserReportSerializer,RequestVerificationSeializer,GetverificationDetailes,UserSerializer
 import pyotp
 import time
-from .models import Regotp, CustomUser
+from .models import Regotp, CustomUser ,UserReports
 import time
-from .tasks import send_mail_to, send_sms_to ,send_follow_notification
+from .tasks import send_mail_to, send_sms_to ,send_follow_notification,send_request_verification_notification,send_verification_expired_notification
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.permissions import IsAuthenticated
@@ -21,7 +21,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import string
 import hashlib
 from rest_framework_simplejwt.views import TokenRefreshView
-from .signals import user_followed, user_unfollowed
+from .signals import user_followed, user_unfollowed 
+from .models import Verification
 
 
 
@@ -192,7 +193,9 @@ class GetUserProfile(APIView):
             user = CustomUser.objects.get(id=id)
             try:
                 verification_obj = user.verificationData
+                print(verification_obj.expiry_date)
                 if verification_obj and verification_obj.plan_choosed and verification_obj.expiry_date < timezone.now():
+                        
                         user.is_verified = False
                         user.save()
 
@@ -201,6 +204,7 @@ class GetUserProfile(APIView):
                         verification_obj.amount_paid = None
                         verification_obj.subscribed_date = None
                         verification_obj.save()
+                        send_verification_expired_notification.delay(user.id)
             except:
                 pass
         except CustomUser.DoesNotExist:
@@ -275,7 +279,8 @@ class Reportuser(APIView):
     def post(self, request):
         data = request.data.copy()
         data['reported_by'] = request.user.id
-        print(data)
+        if UserReports.objects.filter(reported_by=request.user.id, reported_user=data['reported_user']).exists():
+            return Response({'detail': 'You have already reported this user.'}, status=status.HTTP_400_BAD_REQUEST)
         serializer = UserReportSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
@@ -314,15 +319,22 @@ class RequestVerification(APIView):
 
     def post(self,request):
         data = request.data
+        user = request.user
+        doc_number = data['document_number']
+        doc_type = data['document_type']
+        if Verification.objects.filter(document_number=doc_number).exists():
+            return Response({'message':f'{doc_type} number is already used! Try other options .'},status=status.HTTP_400_BAD_REQUEST)
         serializer = RequestVerificationSeializer(data=data)
         if serializer.is_valid():
             serializer.save()
+            send_request_verification_notification.delay(userID=user.id)
             return Response('Request Send',status=status.HTTP_200_OK)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
     
     def get(self,request):
         user = request.user
         try:
+            # checking if the verification is expired  or not--
             verification_obj = user.verificationData
             if verification_obj and verification_obj.plan_choosed and verification_obj.expiry_date < timezone.now():
                     user.is_verified = False
@@ -333,6 +345,7 @@ class RequestVerification(APIView):
                     verification_obj.amount_paid = None
                     verification_obj.subscribed_date = None
                     verification_obj.save()
+                    send_verification_expired_notification.delay(user.id)
         except:
             pass
         serializer = GetverificationDetailes(user)

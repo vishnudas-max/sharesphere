@@ -3,7 +3,7 @@ from django.core.mail import send_mail
 import requests
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from notification.signals import user_followed
+from notification.signals import user_followed,verification_request,verificaton_success,verfication_expired
 from .models import CustomUser,Posts
 
 
@@ -48,4 +48,33 @@ def send_follow_notification(self, follower_id, followed_id):
         return str(e)
     user_followed.send(sender=self.__class__, follower=follower, followed=followed)
     return "FOLLOW notification sent"
+
+@shared_task(bind=True)
+def send_request_verification_notification(self,userID):
+    try:
+        user = CustomUser.objects.get(id=userID)
+    except ObjectDoesNotExist as e:
+        return str(e)
+    verification_request.send(sender=self.__class__, user=user)
+    return "verification  notification sent"
+
+# task for sending sigal after verification succcsss-
+@shared_task(bind=True)
+def send_verification_success_notification(self,userID):
+    try:
+        user = CustomUser.objects.get(id=userID)
+    except ObjectDoesNotExist as e:
+        return str(e)
+    verificaton_success.send(sender=self.__class__, user=user)
+    return "verification success  notification sent"
+
+# task for sending signals after verification is expired--
+@shared_task(bind=True)
+def send_verification_expired_notification(self,userID):
+    try:
+        user = CustomUser.objects.get(id=userID)
+    except ObjectDoesNotExist as e:
+        return str(e)
+    verfication_expired.send(sender=self.__class__, user=user)
+    return "verification expired  notification sent"
 

@@ -210,7 +210,8 @@ class ReportPost(APIView):
         reported_by = request.user
         report_reason = request.data['report_reason']
         reported_post = request.data['reported_post']
-
+        if PostReports.objects.filter(reported_by=reported_by.id,reported_post=reported_post).exists():
+            return Response({'detail': 'You have already reported this Post.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             post = Posts.objects.get(id=reported_post)
             report = PostReports.objects.create(reported_by=reported_by,

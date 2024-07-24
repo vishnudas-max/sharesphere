@@ -11,7 +11,7 @@ from django.db.models.functions import ExtractWeekDay
 from rest_framework import viewsets
 from .serializers import AdminUserSerializer,GetReportSerializer,AdminPostSeializer,VerificationSerializer
 from rest_framework.pagination import PageNumberPagination
-from .task import send_mail_to
+from .task import send_mail_to,send_request_verification_response_notification
 from post.models import PostReports
 from userside.models import Verification
 from rest_framework.decorators import action
@@ -52,7 +52,8 @@ class PostCountByDay(APIView):
                 counts_by_day[day] = 0
 
         return Response(counts_by_day,status=status.HTTP_200_OK)
-    
+
+
 class getTotalDetailes(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -95,49 +96,79 @@ class GeUsers(viewsets.ModelViewSet):
         return queryset
     
     
-    
+class DeleteUser(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes =[IsAuthenticated]
 
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_active = False
-        total_report = instance.allreports.all().count()
-        last_two_reports = instance.allreports.order_by('-reported_time')[:2].values_list('report_reason', flat=True)
-        last_two_reports_text = "\n".join(f"- {reason}" for reason in last_two_reports)
-        message = f"""
-        Dear {instance.username},
+    def delete(self,request,id):
+        try:
+            instance = CustomUser.objects.get(id=id)
+            if instance.is_active == True:
+                instance.is_active = False
+                total_report = instance.allreports.all().count()
+                last_two_reports = instance.allreports.order_by('-reported_time').values_list('report_reason', flat=True).distinct()[:2]
+                last_two_reports_text = "\n".join(f"- {reason}" for reason in last_two_reports)
+                message = f"""
+                Dear {instance.username},
 
-            We regret to inform you that your account on sharesphere has been removed due to repeated violations of our community guidelines. Your account has been reported a total of {total_report} times.
+                    We regret to inform you that your account on sharesphere has been removed due to repeated violations of our community guidelines. Your account has been reported a total of {total_report} times.
 
-            The reasons for the last two reports against your account are as follows:
-            {last_two_reports_text}
+                    The reasons for the last two reports against your account are as follows:
+                    {last_two_reports_text}
 
-            We take the integrity and safety of our community very seriously, and multiple reports indicate that your behavior has been repeatedly found to be inappropriate.
+                    We take the integrity and safety of our community very seriously, and multiple reports indicate that your behavior has been repeatedly found to be inappropriate.
 
-            If you believe this decision has been made in error or if you have any questions, please contact +919207069066.
+                    If you believe this decision has been made in error or if you have any questions, please contact +919207069066.
 
-            Thank you for your understanding.
+                    Thank you for your understanding.
 
-        Sincerely,
-        Sharesphere Support Team
-        """
-        
-        email = instance.email
-        send_mail_to.delay(message,email)
-        instance.save()
-        all_reports = instance.allreports.all()
+                Sincerely,
+                Sharesphere Support Team
+                """
 
-        # updating report status--
-        for report in all_reports:
-            report.action_took = True
-            report.save()
+                email = instance.email
+                title = 'Account Removal'
+                send_mail_to.delay(message,email,title)
+                instance.save()
+                all_reports = instance.allreports.all()
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+                # updating report status--
+                for report in all_reports:
+                    report.action_took = True
+                    report.save()
+            else:
+                instance.is_active = True
+                instance.save()
+                total_report = instance.allreports.all().delete()
+                message = f"""
+                Dear {instance.username},
+
+                    We are pleased to inform you that after reviewing your appeal, your account on Sharesphere has been reactivated. We appreciate the reasons you provided and have taken them into account.
+
+                    Please be reminded of our community guidelines, which are in place to ensure a safe and respectful environment for all our users. We encourage you to review these guidelines again to avoid any future violations.
+
+                    If you have any further questions or need assistance, please do not hesitate to contact us at +919207069066.
+
+                    Welcome back to Sharesphere, and thank you for your cooperation.
+
+                Sincerely,
+                Sharesphere Support Team
+                """
+                email = instance.email
+                title = 'Account Reactivation'
+                send_mail_to.delay(message,email,title)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except:
+            return Response('something went wrong',status=status.HTTP_400_BAD_REQUEST)
+
+
+
 
 class GerUserReports(APIView):    
     authentication_classes = [JWTAuthentication]
     permission_classes =[IsAuthenticated]
     def get(self,request,id):
-        reports = UserReports.objects.filter(reported_user = id)
+        reports = UserReports.objects.filter(reported_user = id)[:5]
         serializer = GetReportSerializer(reports,many=True)
         return Response(serializer.data,status=status.HTTP_200_OK)
 
@@ -171,6 +202,29 @@ class GetPosts(viewsets.ModelViewSet):
         instance = self.get_object()
         instance.is_deleted = True
         instance.save()
+        all_reports = instance.all_post_reports.order_by('-reported_time').values_list('report_reason', flat=True).distinct()[:2]
+        last_two_reports_text = "\n".join(f"- {reason}" for reason in all_reports)
+        message = f"""
+            Dear {instance.userID.username},
+
+                We regret to inform you that your recent post on Sharesphere has been removed due to violations of our community guidelines. Maintaining a safe and respectful environment is our top priority, and your post was found to be in breach of these rules.
+
+                The specific reasons for the removal are as follows:
+                {last_two_reports_text}
+
+                We take these guidelines very seriously and expect all users to adhere to them to ensure a positive experience for everyone in our community.
+
+                If you believe this decision was made in error or if you have any questions, please contact our support team at +919207069066.
+
+                We appreciate your understanding and cooperation in this matter. We encourage you to review our community guidelines to prevent any future violations.
+
+            Sincerely,
+            Sharesphere Support Team
+            """
+
+        email = instance.userID.email
+        title = 'Post Removal'
+        send_mail_to.delay(message,email,title)
         reports = instance.all_post_reports.all()
         for report in reports:
             report.action_took = True
@@ -181,7 +235,7 @@ class GetPostReprts(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes =[IsAuthenticated]
     def get(self,request,id):
-        reports = PostReports.objects.filter(reported_post= id)
+        reports = PostReports.objects.filter(reported_post= id)[:5]
         serializer = GetReportSerializer(reports,many=True)
         return Response(serializer.data,status=status.HTTP_200_OK)
     
@@ -210,14 +264,20 @@ class GetVerificationRequets(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
         verification = self.get_object()
+        user = verification.userID.id
+        invokedUser = self.request.user
         print(verification)
         verification.is_accepted = True
         verification.save()
+        send_request_verification_response_notification.delay(invokedUser.id,user,adminresponse=True)
         return Response({'status': 'verification accepted'}, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         verification = self.get_object()
+        invokedUser = self.request.user
+        user = verification.userID.id
         verification.is_rejected = True
         verification.save()
+        send_request_verification_response_notification.delay(invokedUser.id,user,adminresponse=False)
         return Response({'status': 'verification rejected'}, status=status.HTTP_200_OK)
