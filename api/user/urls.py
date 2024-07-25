@@ -46,6 +46,7 @@ urlpatterns = [
     path('forgot/password/verification/otp/',user.VerifyOtp_for_ForgotPassword.as_view()),
     path('forgot/password/verification/otp/resend/',user.ForgotPasswordResendOtpView.as_view()),
     path('block/user/',user.BlockUserView.as_view()),
-    path('get/followingorfollowers/<int:id>/',user.GetFollwingAndFollowers.as_view())
+    path('get/followingorfollowers/<int:id>/',user.GetFollwingAndFollowers.as_view()),
+    path('get/unread/message/count/',chat.GetUnreadMessageCount.as_view())
 
 ]

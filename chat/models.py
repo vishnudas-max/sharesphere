@@ -35,8 +35,12 @@ class Chat(models.Model):
 
     def __str__(self):
         return f"Message from {self.sender.username} in {self.room.id}"
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['room']),
+            models.Index(fields=['sender']),
+            models.Index(fields=['message_time']),
+        ]
 
-# class OnlinStatus(models.Model):
-#     userID = models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name='onlineUsers')
-#     is_Online = models.BooleanField(default=False)
 

@@ -114,3 +114,13 @@ def send_verification_plan_expired_notification(sender,user,**kwargs):
                                 target_user=user,
                                 notification_type='verification',
                                 message = message)
+    
+def send_message_recived_notification(sender,user,**kwargs):
+    channel_layer = get_channel_layer()
+    message = "message recived"
+    async_to_sync(channel_layer.group_send)(
+        f"notification_{user.id}",{
+            'type' : 'chat_notification',
+            'message':message
+        }
+    )

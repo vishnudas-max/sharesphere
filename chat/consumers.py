@@ -5,15 +5,22 @@ from channels.db import database_sync_to_async
 from rest_framework_simplejwt.tokens import AccessToken
 import jwt
 from .models import Room, Chat
+from notification.signals import message_recived
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_chat_message(self, room, sender, message):
-        print('hello')
-        chat = Chat.objects.create(room=room, sender=sender, message=message)
-        return chat
+            chat = Chat.objects.create(room=room, sender=sender, message=message)
+            return chat
+    
+    @database_sync_to_async
+    def send_maessage_notification(self,room,sender):
+            user = room.users.exclude(id=sender.id).first()
+            message_recived.send(sender=self.__class__,user=user)
+            return None
+    
 
     # to get room--
     @database_sync_to_async
@@ -112,11 +119,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 if message and event_type == 'chat_message':
                     request_user = self.scope['user']
                     room_id = int(self.room_group_name.split('_')[1])
-                    print(f"roomid{room_id}")
-
                     room = await self.get_room(room_id)
 
                     chat_message = await self.save_chat_message(room, request_user, message)
+                    await self.send_maessage_notification(room,request_user)
                     print('message saved', chat_message)
 
                     await self.channel_layer.group_send(

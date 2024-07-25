@@ -14,3 +14,4 @@ class NotificationConfig(AppConfig):
         signals.verification_response.connect(handlers.send_verification_request_response_notification)
         signals.verificaton_success.connect(handlers.send_account_verified_notification)
         signals.verfication_expired.connect(handlers.send_verification_plan_expired_notification)
+        signals.message_recived.connect(handlers.send_message_recived_notification)
