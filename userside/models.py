@@ -31,6 +31,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     created_date = models.DateTimeField(default=timezone.now)
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)  # Add this line
     is_verified = models.BooleanField(default=False)
     following = models.ManyToManyField(
         'self', symmetrical=False, related_name='user_followers', blank=True)
