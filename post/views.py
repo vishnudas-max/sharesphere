@@ -99,8 +99,11 @@ class PostCreateUpdate(APIView):
 
     def patch(self, request):
         data = request.data
+        user = request.user
         obj = Posts.objects.get(id=data['id'])
-        print(data)
+        if obj.userID.id != user.id:
+            print('user dont have access')
+            return Response({'status':False,'message':'Do not have permission to edit'},status=status.HTTP_401_UNAUTHORIZED) 
         serializer = postCreateSeializer(obj, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()

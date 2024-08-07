@@ -504,8 +504,8 @@ class GetFollwingAndFollowers(APIView):
                     users = user.followers.all()
 
                 # Exclude blocked users
-                blocked_users = user.blocked_users.all()
-                users = users.exclude(id__in=blocked_users.values_list('id', flat=True))
+                # blocked_users = user.blocked_users.all()
+                # users = users.exclude(id__in=blocked_users.values_list('id', flat=True))
 
                 if search_query:
                 
