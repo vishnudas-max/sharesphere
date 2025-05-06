@@ -95,17 +95,26 @@ ASGI_APPLICATION = 'sharesphere.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        # Set to 'localhost' or your database server's IP address
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),  # Default PostgreSQL port
-    }
-}
+if DEBUG:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',  # Database file will be created inside your project directory
+            }
+        }
+else:
+        DATABASES = {
+             'default': {
+                 'ENGINE': 'django.db.backends.postgresql',
+                 'NAME': os.getenv('DB_NAME'),
+                 'USER': os.getenv('DB_USER'),
+                 'PASSWORD': os.getenv('DB_PASSWORD'),
+                 # Set to 'localhost' or your database server's IP address
+                 'HOST': os.getenv('DB_HOST'),
+                 'PORT': os.getenv('DB_PORT'),  # Default PostgreSQL port
+             }
+         }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

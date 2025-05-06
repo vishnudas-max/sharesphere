@@ -22,7 +22,8 @@ class GoogleLoginApi(APIView):
         validated_data = auth_serializer.validated_data
         user_data = get_user_data(validated_data)
         if(user_data['status']==False):
-            return redirect(settings.BASE_APP_URL)
+            redirect_url = f"{settings.BASE_APP_URL}?message='Something went wrong, Try again later...'"
+            return redirect(redirect_url)
         try:
             user = User.objects.get(email=user_data['email'])
             if(user.is_active == False):
@@ -46,10 +47,10 @@ class GoogleLoginApi(APIView):
                 first_name=first_name,
                 last_name=last_name,
                 email=user_data['email'],
-                username=username 
+                username=username
             )
             tokens = get_tokens_for_user(user)
             redirect_url = f"{settings.BASE_APP_URL}?access={tokens['access']}&refresh={tokens['refresh']}"
             return redirect(redirect_url)
-        
+
        
