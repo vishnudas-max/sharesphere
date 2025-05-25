@@ -57,28 +57,18 @@ pip install -r requirements.txt
 
 Create a .env file in the root of the project and add the following:
 
-DEBUG=True
-SECRET_KEY=your-secret-key
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database
-DB_NAME=your_db_name
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-DB_HOST=localhost
-DB_PORT=5432
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-REDIRECT_URI=http://localhost:8000/google/callback/
-
-# Redis
-REDIS_URL=redis://127.0.0.1:6379
-
-# Email
-EMAIL_HOST_USER=your_email@example.com
-EMAIL_HOST_PASSWORD=your_email_password
+EMAIL_HOST=smtp.gmail.com
+EMAIL_FROM=your_email@gmail.com
+EMAIL_HOST_USER=your_gmail@gmail.com
+EMAIL_HOST_PASSWORD=email host password
+EMAIL_PORT=email port
+BASE_APP_URL=base url of frontend
+BASE_API_URL=base url of backend
+GOOGLE_OAUTH2_CLIENT_ID= google auth cliend id
+GOOGLE_OAUTH2_CLIENT_SECRET= google auth secret key
+RAZORPAY_SECRET= razor pay secret key
+RAZORPAY_KEY_ID= razor pay key id
+TWO_FACTOR_API_KEY= two-factor api key for sms
 
 5. Apply Migrations and Create Superuser
 
